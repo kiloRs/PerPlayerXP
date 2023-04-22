@@ -1,0 +1,4 @@
+name: ProfilesPlus
+version: '${project.version}'
+main: com.profilesplus.ProfilesPlus
+api-version: 1.19
