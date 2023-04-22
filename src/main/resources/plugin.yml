@@ -1,4 +1,34 @@
-name: ProfilesPlus
+name: RPGProfiles
 version: '${project.version}'
 main: com.profilesplus.ProfilesPlus
 api-version: 1.19
+author: Kilo
+description: A plugin to manage multiple profiles for players.
+softdepend:
+  - MMOItems
+  - Vault
+  - PlaceholderAPI
+  - MythicMobs
+depend:
+  - MMOCore
+  - MythicLib
+commands:
+  profiles:
+    description: Opens the profiles menu.
+    usage: /<command>
+  createprofile:
+    description: Creates a new profile with the given display name and class name.
+    usage: /<command> <display name> <class name>
+  removeProfile:
+    description: Remove a profile <integer> is the number of the slot it uses
+    usage: /removeProfile <number>
+
+permissions:
+  profilesplus.profiles:
+    description: Allows the player to use the /profiles command.
+    default: true
+  profilesplus.createprofile:
+    description: Allows the player to use the /createprofile command.
+    default: true
+  profilesplus.removeprofile:
+    default: true

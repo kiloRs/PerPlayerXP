@@ -1,4 +1,4 @@
-package com.profilesplus.menu.text.events;
+package com.profilesplus.events;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;

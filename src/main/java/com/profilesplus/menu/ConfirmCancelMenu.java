@@ -6,27 +6,31 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
-import java.util.function.Consumer;
-
 public abstract class ConfirmCancelMenu extends InventoryGUI {
-    private final Consumer<InventoryClickEvent> onConfirm;
-    private final Consumer<InventoryClickEvent> onCancel;
+    protected final ItemStack cancelButton;
+    protected final ItemStack confirmButton;
 
-    public ConfirmCancelMenu(Player player, Plugin plugin, String title, int size, Consumer<InventoryClickEvent> onConfirm, Consumer<InventoryClickEvent> onCancel) {
+    public ConfirmCancelMenu(Player player, Plugin plugin, String title, int size) {
         super(player, plugin, title, size);
-        this.onConfirm = onConfirm;
-        this.onCancel = onCancel;
 
-        setItem(26, getConfirmButton(), onConfirm);
-        setItem(18, getCancelButton(), onCancel);
+        cancelButton = ProfilesPlus.getIcons().getCancel();
+        confirmButton = ProfilesPlus.getIcons().getConfirm();
+
+        setItem(size - 9, cancelButton, this::onCancel);
+        setItem(size - 1, confirmButton, event -> {
+            if (canConfirm()) {
+                onConfirm(event);
+            }
+        });
     }
 
-    public ItemStack getConfirmButton() {
-        return ProfilesPlus.getIcons().getConfirm();
-    }
+    protected abstract boolean canConfirm();
 
-    public ItemStack getCancelButton() {
-        return ProfilesPlus.getIcons().getCancel();
+    protected abstract void onConfirm(InventoryClickEvent event);
+
+    protected abstract void onCancel(InventoryClickEvent event);
+
+    protected void updateConfirmButton() {
+        inventory.setItem(inventory.getSize() - 1, confirmButton);
     }
 }
-

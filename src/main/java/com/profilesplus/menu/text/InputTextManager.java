@@ -1,13 +1,12 @@
 package com.profilesplus.menu.text;
 
-import com.profilesplus.menu.InputTextType;
-import com.profilesplus.menu.text.InputTextData;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+
 
 public class InputTextManager {
     private final Map<UUID, InputTextData> inputTextDataMap;

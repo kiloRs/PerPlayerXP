@@ -1,8 +1,11 @@
-package com.profilesplus.menu;
+package com.profilesplus.menu.text;
+
+import lombok.Getter;
 
 import java.util.UUID;
 import java.util.function.Consumer;
 
+@Getter
 public class InputTextData {
     private final UUID playerUUID;
     private final InputTextType inputTextType;
@@ -12,17 +15,5 @@ public class InputTextData {
         this.playerUUID = playerUUID;
         this.inputTextType = inputTextType;
         this.callback = callback;
-    }
-
-    public UUID getPlayerUUID() {
-        return playerUUID;
-    }
-
-    public InputTextType getInputTextType() {
-        return inputTextType;
-    }
-
-    public Consumer<String> getCallback() {
-        return callback;
     }
 }

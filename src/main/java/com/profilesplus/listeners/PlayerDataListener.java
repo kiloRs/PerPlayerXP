@@ -1,8 +1,10 @@
 package com.profilesplus.listeners;
 
+import com.profilesplus.ProfilesPlus;
 import com.profilesplus.players.PlayerData;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -18,12 +20,12 @@ public class PlayerDataListener implements Listener {
         this.saveInterval = saveInterval;
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST,ignoreCancelled = true)
     public void onPlayerJoin(PlayerJoinEvent event) {
-        PlayerData.get(event.getPlayer());
+        PlayerData.get(event.getPlayer()).loadProfiles();
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST,ignoreCancelled = true)
     public void onPlayerQuit(PlayerQuitEvent event) {
         PlayerData playerData = PlayerData.get(event.getPlayer());
         playerData.saveProfiles();
@@ -33,6 +35,7 @@ public class PlayerDataListener implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
+                ProfilesPlus.log("AutoSave has been set for " + saveInterval + " minutes!");
                 for (PlayerData playerData : PlayerData.getAllInstances()) {
                     playerData.saveProfiles();
                 }

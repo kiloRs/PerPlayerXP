@@ -1,0 +1,14 @@
+forbiddenNames:
+  - cunt
+  - ass
+  - fuck
+  - asshole
+  - porno
+  - sex
+  - sexy
+  - ballsack
+  - shit
+  - shitty
+debug: true
+minsToSave: 10
+item-ownership-duration: 60 #Measured in seconds!
