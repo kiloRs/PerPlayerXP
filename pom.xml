@@ -41,11 +41,25 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <doCheck>false</doCheck>
+                    <doUpdate>false</doUpdate>
+                    <revisionOnScmFailure>unknown-revision</revisionOnScmFailure>
+                    <urlScm>
+                        <connection>scm:git:https://github.com/kiloRs/ProfilesPlus.git</connection>
+                        <developerConnection>scm:git:https://github.com/kiloRs/ProfilesPlus.git</developerConnection>
+                        <url>https://github.com/kiloRs/ProfilesPlus</url>
+                    </urlScm>
                     <format>{0,number}</format>
                     <items>
                         <item>buildNumber</item>
                     </items>
                 </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    This configuration will create a buildNumber property with the current revision number. You can use this property in your pom.xml or in other parts of your build process.
+
             </plugin>
 
             <plugin>
