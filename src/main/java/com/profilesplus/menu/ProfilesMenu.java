@@ -1,6 +1,6 @@
 package com.profilesplus.menu;
 
-import com.profilesplus.ProfilesPlus;
+import com.profilesplus.RPGProfiles;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
 import lombok.Getter;
@@ -37,9 +37,9 @@ public class ProfilesMenu extends InventoryGUI {
                 icon = profile.getIcon().getItemStack();
             } else {
                 if (hasPermission) {
-                    icon = ProfilesPlus.getIcons(player).getAvailable();
+                    icon = RPGProfiles.getIcons(player).getAvailable();
                 } else {
-                    icon = ProfilesPlus.getIcons(player).getLocked();
+                    icon = RPGProfiles.getIcons(player).getLocked();
                 }
             }
 
@@ -48,14 +48,14 @@ public class ProfilesMenu extends InventoryGUI {
                 if (profile != null && hasPermission) {
                     // Left click to activate profile, shift-right click to delete profile
                     if (event.isLeftClick()) {
-                        profile.update();
-                        playerData.getPlayer().sendMessage("Profile activated.");
+                        playerData.setActiveProfile(profile);
+                        playerData.getPlayer().sendMessage("Profile activated: " + profile.getIndex() +  " " + profile.getId() + " for " + player.getName());
                     } else if (event.isShiftClick() && event.isRightClick()) {
                         new ProfileRemoveMenu(playerData,profile,this).open();
                     }
                 } else if (profile == null && hasPermission) {
                     new ProfileCreateMenu(playerData,this).open();
-                } else if (profile != null && !hasPermission) {
+                } else if (profile != null) {
                     player.sendMessage("You cannot delete the profile of a locked slot.");
                 }
             });
@@ -67,8 +67,8 @@ public class ProfilesMenu extends InventoryGUI {
         // Handle any additional close events for the ProfilesMenu
         if (event.getPlayer().hasMetadata("profile")){
             if (!event.getPlayer().getMetadata("profile").get(0).asBoolean()){
-                ((ProfilesPlus) ProfilesPlus.getInstance()).getSpectatorManager().setWaiting(((Player) event.getPlayer()));
-                event.getPlayer().teleport(((ProfilesPlus) ProfilesPlus.getInstance()).getSpectatorManager().getSpectatorLocation(), PlayerTeleportEvent.TeleportCause.PLUGIN);
+                ((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager().setWaiting(((Player) event.getPlayer()));
+                event.getPlayer().teleport(((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager().getSpectatorLocation(), PlayerTeleportEvent.TeleportCause.PLUGIN);
                 event.getPlayer().setGameMode(GameMode.SPECTATOR);
                 ((Player) event.getPlayer()).setFlySpeed(0);
 
@@ -101,12 +101,12 @@ public class ProfilesMenu extends InventoryGUI {
         return -1; // Return -1 if not a valid slot
     }
     public static int[] getCenterSlots() {
-        centerSlots = new int[5 * 3];
+        centerSlots = new int[3 * 5];
         int inventorySize = 54;
         int slotsPerRow = 9;
 
         // Calculate the starting slot for the center area
-        int centerRowStart = (inventorySize / 2) - (slotsPerRow / 2) - 2;
+        int centerRowStart = (inventorySize / 2) - (slotsPerRow / 2) - 1;
         int index = 0;
 
         for (int row = 0; row < 3; row++) {

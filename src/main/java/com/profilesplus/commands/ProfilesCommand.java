@@ -1,6 +1,6 @@
 package com.profilesplus.commands;
 
-import com.profilesplus.ProfilesPlus;
+import com.profilesplus.RPGProfiles;
 import com.profilesplus.menu.ProfilesMenu;
 import com.profilesplus.players.PlayerData;
 import lombok.Getter;
@@ -13,10 +13,10 @@ import org.jetbrains.annotations.NotNull;
 @Getter
 public class ProfilesCommand implements CommandExecutor {
 
-    private final ProfilesPlus profilesPlus;
+    private final RPGProfiles RPGProfiles;
 
-    public ProfilesCommand(ProfilesPlus profilesPlus) {
-        this.profilesPlus = profilesPlus;
+    public ProfilesCommand(RPGProfiles RPGProfiles) {
+        this.RPGProfiles = RPGProfiles;
     }
 
     @Override
@@ -30,7 +30,7 @@ public class ProfilesCommand implements CommandExecutor {
             return false;
         }
 
-        new ProfilesMenu(ProfilesPlus.getInstance(),playerData).open();
+        new ProfilesMenu(RPGProfiles.getInstance(),playerData).open();
         return true;
     }
 }

@@ -5,19 +5,18 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.thebetterchoice</groupId>
-    <artifactId>ProfilesPlus</artifactId>
-    <version>1.0.3</version>
+    <groupId>com.profilesplus</groupId>
+    <artifactId>RPGProfiles</artifactId>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
 
-    <name>ProfilesPlus</name>
+    <name>RPGProfiles</name>
 
     <properties>
         <java.version>18</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <build>
-        <!--suppress UnresolvedMavenProperty -->
         <finalName>${project.artifactId}-${project.version}-SNAPSHOT</finalName>
         <plugins>
             <plugin>

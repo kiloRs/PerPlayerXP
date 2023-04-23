@@ -1,6 +1,6 @@
 name: RPGProfiles
 version: '${project.version}'
-main: com.profilesplus.ProfilesPlus
+main: com.profilesplus.RPGProfiles
 api-version: 1.19
 author: Kilo
 description: A plugin to manage multiple profiles for players.

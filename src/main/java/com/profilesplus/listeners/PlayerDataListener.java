@@ -1,12 +1,11 @@
 package com.profilesplus.listeners;
 
-import com.profilesplus.ProfilesPlus;
+import com.profilesplus.RPGProfiles;
 import com.profilesplus.players.PlayerData;
-import org.bukkit.Bukkit;
+import net.Indyuce.mmocore.api.event.AsyncPlayerDataLoadEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -21,7 +20,7 @@ public class PlayerDataListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGHEST,ignoreCancelled = true)
-    public void onPlayerJoin(PlayerJoinEvent event) {
+    public void onPlayerJoin(AsyncPlayerDataLoadEvent event) {
         PlayerData.get(event.getPlayer()).loadProfiles();
     }
 
@@ -35,7 +34,7 @@ public class PlayerDataListener implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                ProfilesPlus.log("AutoSave has been set for " + saveInterval + " minutes!");
+                RPGProfiles.log("AutoSave has been set for " + saveInterval + " minutes!");
                 for (PlayerData playerData : PlayerData.getAllInstances()) {
                     playerData.saveProfiles();
                 }

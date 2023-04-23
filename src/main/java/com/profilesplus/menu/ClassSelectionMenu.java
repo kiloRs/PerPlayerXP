@@ -1,6 +1,7 @@
 package com.profilesplus.menu;
 
-import com.profilesplus.ProfilesPlus;
+import com.profilesplus.RPGProfiles;
+import io.lumine.mythic.lib.MythicLib;
 import net.Indyuce.mmocore.MMOCore;
 import net.Indyuce.mmocore.api.player.profess.PlayerClass;
 import org.bukkit.entity.Player;
@@ -25,8 +26,8 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
         Map<String, ItemStack> classIcons = new HashMap<>();
 
         for (PlayerClass aClass : MMOCore.plugin.classManager.getAll()) {
-            if (ProfilesPlus.getIcons(player).hasClassIcon(aClass.getId())) {
-                classIcons.put(aClass.getId(), ProfilesPlus.getIcons(player).getClassIcon(aClass.getId()));
+            if (RPGProfiles.getIcons(player).hasClassIcon(aClass.getId())) {
+                classIcons.put(aClass.getId(), RPGProfiles.getIcons(player).getClassIcon(aClass.getId()));
             }
         }
 
@@ -58,17 +59,17 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
 
     @Override
     protected boolean canConfirm() {
-        return selectedClassType != null;
+        return selectedClassType != null && MMOCore.plugin.classManager.has(selectedClassType);
     }
 
     @Override
     protected String failedConfirmMessage() {
-        return "";
+        return "Class Selection Failure!";
     }
 
     @Override
     protected String successfulConfirmMessage() {
-        return "";
+        return "Successfully Selected " + selectedClassType;
     }
 
     @Override
@@ -80,14 +81,14 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
         //todo Fix this so the display of the lore input works!
 
         // Close the ClassSelectionMenu and return to the ProfileCreateMenu
-        player.closeInventory();
+        player.closeInventory(InventoryCloseEvent.Reason.PLUGIN);
         createMenu.open();
     }
 
     @Override
     protected void onCancel(InventoryClickEvent event) {
         // Close the ClassSelectionMenu and return to the ProfileCreateMenu
-        player.closeInventory();
+        player.closeInventory(InventoryCloseEvent.Reason.UNKNOWN);
         createMenu.open();
     }
 
@@ -95,7 +96,14 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
     public List<String> confirmLore() {
 
         //todo fix lore
-        return new ArrayList<>();
+        ArrayList<String> strings = new ArrayList<>();
+        if (canConfirm()) {
+            strings.add(MythicLib.plugin.parseColors("&aSelected Class: " + selectedClassType.toUpperCase()));
+        }
+        else {
+            strings.add(MythicLib.plugin.parseColors("&cPlease select a class first!"));
+        }
+        return strings;
 
     }
 

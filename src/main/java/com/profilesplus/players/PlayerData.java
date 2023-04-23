@@ -1,12 +1,12 @@
 package com.profilesplus.players;
 
-import com.profilesplus.ProfilesPlus;
+import com.profilesplus.RPGProfiles;
 import com.profilesplus.events.ProfileCreateEvent;
-import com.profilesplus.menu.ProfilesMenu;
 import com.profilesplus.saving.BukkitSerialization;
 import com.profilesplus.saving.InventoryDatabase;
 import io.lumine.mythic.lib.api.player.MMOPlayerData;
 import lombok.Getter;
+import net.Indyuce.mmocore.MMOCore;
 import net.milkbowl.vault.economy.Economy;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -31,7 +31,7 @@ import java.util.UUID;
 @Getter
 public class PlayerData {
     @Getter
-    private static final NamespacedKey ACTIVE_PROFILE_KEY = new NamespacedKey(ProfilesPlus.getInstance(), "activeProfile");
+    private static final NamespacedKey ACTIVE_PROFILE_KEY = new NamespacedKey(RPGProfiles.getInstance(), "activeProfile");
     @Getter
     private static final Map<UUID, PlayerData> playerDataInstances = new HashMap<>();
 
@@ -49,7 +49,7 @@ public class PlayerData {
     private int activeSlot;
     @Getter
     private static final String PERMISSION_PREFIX = "rpgprofiles.slot.";
-    private static final InventoryDatabase inventoryDatabase = ProfilesPlus.getInventoryDatabase();
+    private static final InventoryDatabase inventoryDatabase = RPGProfiles.getInventoryDatabase();
 
     public PlayerData(Player player){
         this(player.getUniqueId());
@@ -77,20 +77,19 @@ public class PlayerData {
             }
 
             activateProfile();
-        }
-        if (activeProfile == null){
-            ProfilesPlus.log("No Active Profile - Opening Profiles Menu!");
-            new ProfilesMenu(ProfilesPlus.getInstance(),this).open();
+            this.activeSlot = activeProfile.getIndex();
+            player.sendMessage("You have an active profile of " + activeSlot + " (" + activeProfile.getId() + ")");
         }
         else {
-            this.activeSlot = activeProfile.getIndex();
+            player.sendMessage("You have no current active profile!");
         }
     }
 
     private void activateProfile() {
         if (activeProfile != null){
             activeProfile.update();
-            ProfilesPlus.log("Profile Activation via Player! " + activeProfile.getIndex() + " " + activeProfile.getName() + " " + activeProfile.getClassName());
+            player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, getActiveProfile().getIndex());
+            RPGProfiles.log("Profile Activation via Player! " + activeProfile.getIndex() + " " + activeProfile.getName() + " " + activeProfile.getClassName());
         }
     }
 
@@ -128,7 +127,7 @@ public class PlayerData {
     }
 
     private static File getPlayerDataFolder() {
-        final File dataFolder = new File("plugins/ProfilesPlus/playerdata");
+        final File dataFolder = new File("plugins/RPGProfiles/playerdata");
         if (!dataFolder.exists() || !dataFolder.isDirectory()) {
             dataFolder.mkdirs();
         }
@@ -137,14 +136,12 @@ public class PlayerData {
 
     public void saveProfiles() {
         for (Profile profile : profileMap.values()) {
-            profile.saveToConfigurationSection();
+            if (profile.getIndex()==activeSlot && getActiveProfile() != null){
+                profile.saveToConfigurationSection(true,true);
+                player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, getActiveProfile().getIndex());
+                saveConfig();
+            }
         }
-
-        if (getActiveProfile() != null) {
-            player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, getActiveProfile().getIndex());
-            player.saveData();
-        }
-        saveConfig();
     }
 
     public void loadProfiles() {
@@ -154,9 +151,16 @@ public class PlayerData {
                 int slot = Integer.parseInt(slotString);
                 String displayName = profilesSection.getString(slotString + ".id");
                 String className = profilesSection.getString(slotString + ".className");
-                if (displayName != null && className != null) {
+                if (displayName != null && className != null && !displayName.isEmpty() && !className.isEmpty() && MMOCore.plugin.classManager.has(className)) {
                     Profile profile = new Profile(displayName, className, slot, uuid);
                     profileMap.put(slot, profile);
+                }
+                else if (!MMOCore.plugin.classManager.has(className)){
+                    RPGProfiles.log("Error: Profile " + slot + " of " + displayName + " of player: " + player.getName() + " has a broken class name!");
+                    continue;
+                }
+                else {
+                    RPGProfiles.log("Configuration Error of Profiles : " + player.getName());
                 }
             }
         }
@@ -165,6 +169,9 @@ public class PlayerData {
 
         if (activeSlot > 0 && profileMap.containsKey(activeSlot) && profileMap.get(activeSlot).isCreated()) {
             activeProfile =  profileMap.get(activeSlot);
+        }
+        else if (activeSlot > 0 && !profileMap.containsKey(activeSlot)){
+            throw new RuntimeException("Active slot is missing: " + activeSlot);
         }
     }
 
@@ -205,10 +212,9 @@ public class PlayerData {
         }
         profileMap.put(availableSlot, event.getProfile()); // Add the new profile to the map
 
-        profileMap.get(availableSlot).saveToConfigurationSection();
-
-        if (activate){
+        if (activate || profileMap.size() == 1){
             setActiveProfile(profileMap.get(availableSlot));
+            return activeProfile;
         }
 
 
@@ -241,10 +247,9 @@ public class PlayerData {
         }
         profileMap.put(slot, event.getProfile()); // Add the new profile to the map
 
-        newProfile.saveToConfigurationSection();
-
-        if (activate){
+        if (activate || profileMap.size() == 1){
             setActiveProfile(profileMap.get(slot));
+            return activeProfile;
         }
 
         return event.getProfile();
@@ -256,19 +261,23 @@ public class PlayerData {
     public void setActiveProfile(int newSlot) {
         if (activeProfile != null) {
             if (activeProfile.getIndex() == newSlot) {
+                player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, getActiveProfile().getIndex());
+                player.saveData();
                 return;
             }
             if (activeProfile.getId().equalsIgnoreCase(getProfiles().get(newSlot).getId()) && getProfiles().containsKey(newSlot)) {
+                player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, getActiveProfile().getIndex());
+                player.saveData();
                 return;
             }
 
-            activeProfile.saveToConfigurationSection();
+            activeProfile.saveToConfigurationSection(true,true);
         }
 
         if (profileMap.containsKey(newSlot)) {
             // Save the current active profile's inventory to the database
             Profile currentProfile = getActiveProfile();
-            if (currentProfile != null) {
+            if (currentProfile != null ) {
                 Inventory inventory = player.getInventory();
                 byte[] inventoryData = BukkitSerialization.serializeInventory(inventory);
                 inventoryDatabase.saveInventory(uuid.toString(), currentProfile.getIndex(), inventoryData);
@@ -278,6 +287,9 @@ public class PlayerData {
             Profile newProfile = profileMap.get(newSlot);
             if (newProfile != null) {
                 this.activeProfile = newProfile;
+                this.activeSlot = newSlot;
+                player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, getActiveProfile().getIndex());
+                player.saveData();
                 byte[] inventoryData = inventoryDatabase.loadInventory(uuid.toString(), newProfile.getIndex());
                 if (inventoryData != null) {
                     Inventory deserializedInventory = BukkitSerialization.deserializeInventory(inventoryData);
@@ -285,20 +297,20 @@ public class PlayerData {
                 }
                 activeProfile.update();
 
-                if (ProfilesPlus.isUsingEconomy()) {
-                    Economy economy = ((ProfilesPlus) ProfilesPlus.getInstance()).getEconomy();
+                if (RPGProfiles.isUsingEconomy()) {
+                    Economy economy = ((RPGProfiles) RPGProfiles.getInstance()).getEconomy();
                     double currentBalance = economy.getBalance(player);
                     economy.withdrawPlayer(player, currentBalance);
                     economy.depositPlayer(player, newProfile.getBalance());
                 }
 
 
-                player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER,newSlot);
+                player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER,activeSlot);
                 saveConfig();
                 return;
             }
             else {
-                ProfilesPlus.log("Error: Profile is not save or register currently in " + player.getName() + " 's profile!");
+                RPGProfiles.log("Error: Profile is not save or register currently in " + player.getName() + " 's profile!");
 
                 if (profileMap.isEmpty()){
                     setLimbo(activeProfile==null);
@@ -306,16 +318,16 @@ public class PlayerData {
                 return;
             }
         }
-        ProfilesPlus.log("Profile in slot: " + newSlot + " not available to be activeProfile of " + player.getName());
+        RPGProfiles.log("Profile in slot: " + newSlot + " not available to be activeProfile of " + player.getName());
     }
 
     private void setLimbo(boolean limbo) {
 
         if (limbo) {
-            ((ProfilesPlus) ProfilesPlus.getInstance()).getSpectatorManager().setWaiting(player);
+            ((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager().setWaiting(player);
         }
         else {
-            ((ProfilesPlus) ProfilesPlus.getInstance()).getSpectatorManager().removeWaiting(player);
+            ((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager().removeWaiting(player);
         }
     }
 

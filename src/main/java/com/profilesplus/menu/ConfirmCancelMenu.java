@@ -1,6 +1,6 @@
 package com.profilesplus.menu;
 
-import com.profilesplus.ProfilesPlus;
+import com.profilesplus.RPGProfiles;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
@@ -19,9 +19,9 @@ public abstract class ConfirmCancelMenu extends InventoryGUI {
     public ConfirmCancelMenu(Player player, Plugin plugin, String title, int size) {
         super(player, plugin, title, size);
 
-        cancelButton = ProfilesPlus.getIcons(player).getCancel();
-        confirmButton = ProfilesPlus.getIcons(player).getConfirm();
-        confirmDisabledButton = ProfilesPlus.getIcons(player).getConfirmDisabled();
+        cancelButton = RPGProfiles.getIcons(player).getCancel();
+        confirmButton = RPGProfiles.getIcons(player).getConfirm();
+        confirmDisabledButton = RPGProfiles.getIcons(player).getConfirmDisabled();
 
         if (confirmButton.getType() == confirmDisabledButton.getType()) {
             if (confirmDisabledButton.getItemMeta().hasCustomModelData()) {

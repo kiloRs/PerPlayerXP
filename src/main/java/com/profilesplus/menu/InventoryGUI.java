@@ -1,5 +1,6 @@
 package com.profilesplus.menu;
 
+import com.profilesplus.RPGProfiles;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -7,6 +8,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +30,12 @@ public abstract class InventoryGUI implements InventoryHolder {
     }
 
     public void open() {
-        player.openInventory(inventory);
+        new BukkitRunnable(){
+            @Override
+            public void run() {
+                player.openInventory(inventory);
+            }
+        }.runTaskLater(RPGProfiles.getInstance(),1);
     }
 
     public void setItem(int slot, ItemStack item, Consumer<InventoryClickEvent> onClick) {

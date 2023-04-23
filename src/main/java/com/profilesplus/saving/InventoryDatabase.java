@@ -1,5 +1,9 @@
 package com.profilesplus.saving;
 
+import com.profilesplus.RPGProfiles;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -10,8 +14,10 @@ public class InventoryDatabase {
     private Connection connection;
 
     public InventoryDatabase(String fileName) {
+        Path path = Paths.get(RPGProfiles.getInstance().getDataFolder().getPath(), fileName);
+        RPGProfiles.log("Inventory db stored at: " + path.toString());
         try {
-            String url = "jdbc:sqlite:" + fileName;
+            String url = "jdbc:sqlite:"  + path.toString();
             connection = DriverManager.getConnection(url);
             createTable();
         } catch (SQLException e) {

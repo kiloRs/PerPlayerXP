@@ -1,6 +1,6 @@
 package com.profilesplus.commands;
 
-import com.profilesplus.ProfilesPlus;
+import com.profilesplus.RPGProfiles;
 import com.profilesplus.menu.ProfileRemoveMenu;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
@@ -12,9 +12,9 @@ import org.jetbrains.annotations.NotNull;
 
 public class DeleteProfilesCommand implements CommandExecutor {
 
-    private final ProfilesPlus plugin;
+    private final RPGProfiles plugin;
 
-    public DeleteProfilesCommand(ProfilesPlus plugin) {
+    public DeleteProfilesCommand(RPGProfiles plugin) {
         this.plugin = plugin;
     }
 

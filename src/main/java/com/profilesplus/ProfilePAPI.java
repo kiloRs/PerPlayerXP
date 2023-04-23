@@ -9,9 +9,9 @@ import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
 
 public class ProfilePAPI extends PlaceholderExpansion {
-    private final ProfilesPlus plugin;
+    private final RPGProfiles plugin;
 
-    public ProfilePAPI(ProfilesPlus plugin) {
+    public ProfilePAPI(RPGProfiles plugin) {
         this.plugin = plugin;
     }
 

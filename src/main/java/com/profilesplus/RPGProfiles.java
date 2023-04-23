@@ -7,12 +7,9 @@ import com.profilesplus.listeners.*;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.saving.InventoryDatabase;
 import lombok.Getter;
-import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.economy.Economy;
-import net.milkbowl.vault.permission.Permission;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -24,14 +21,11 @@ import java.util.List;
 import java.util.logging.Logger;
 
 @Getter
-public final class ProfilesPlus extends JavaPlugin {
+public final class RPGProfiles extends JavaPlugin {
     @Getter
     private static Plugin instance;
     private SpectatorManager spectatorManager;
     private Economy economy;
-    private Chat chat;
-    private Permission perms;
-    private YamlConfiguration forbiddenNames = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "config.yml"));
     @Getter
     private static boolean usingEconomy = false;
     @Getter
@@ -88,15 +82,15 @@ public final class ProfilesPlus extends JavaPlugin {
         }
     }
     public List<String> getForbiddenNames() {
-        return forbiddenNames.getStringList("forbiddenNames");
+        return getConfig().getStringList("forbiddenNames");
     }
 
     public void addForbidden(List<String> k){
         for (String s : k) {
-            forbiddenNames.getStringList("forbiddenNames").add(s);
+            getConfig().getStringList("forbiddenNames").add(s);
         }
         try {
-            forbiddenNames.save(new File(getDataFolder(), "config.yml"));
+            getConfig().save(new File(getDataFolder(), "config.yml"));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -105,7 +99,7 @@ public final class ProfilesPlus extends JavaPlugin {
 
     private void registerListeners() {
         Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this),this);
-        Bukkit.getPluginManager().registerEvents(new PlayerMoveRestrict(),this);
+        Bukkit.getPluginManager().registerEvents(new PlayerMoveRestrict(spectatorManager),this);
         Bukkit.getPluginManager().registerEvents(new InventoryListener(),this);
 
         if (getConfig().isBoolean("item-ownership.enable") && getConfig().getBoolean("item-ownership.enable")){
@@ -114,6 +108,7 @@ public final class ProfilesPlus extends JavaPlugin {
             }
             else {
                 Bukkit.getPluginManager().registerEvents(new PlayerItemListener(this),this);
+                log("Enabled the Player Item controller (to protect drops/ownership).");
             }
         }
 

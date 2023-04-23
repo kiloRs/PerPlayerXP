@@ -1,6 +1,6 @@
 package com.profilesplus.players;
 
-import com.profilesplus.ProfilesPlus;
+import com.profilesplus.RPGProfiles;
 import com.profilesplus.saving.BukkitSerialization;
 import io.lumine.mythic.lib.api.explorer.ItemBuilder;
 import lombok.Getter;
@@ -43,6 +43,7 @@ public class Profile {
     private double balance = 0;
     private Location lastKnownLocation;
     private final int index;
+    private boolean fresh = true;
 
     public Profile(String id, String className,int slotNumber, UUID player){
         this.id = id;
@@ -50,9 +51,9 @@ public class Profile {
         this.className = className;
         this.mmoCorePlayer = net.Indyuce.mmocore.api.player.PlayerData.get(player);
         this.internalPlayer = PlayerData.get(player);
-        section = internalPlayer.getConfig().getConfigurationSection("profiles." + this.index);
-        if (section == null){
-            section = internalPlayer.getConfig().createSection("profiles." + this.index);
+        this.section = internalPlayer.getConfig().getConfigurationSection("profiles." + this.index);
+        if (this.section == null){
+            this.section.createSection("profiles." + index);
         }
         this.classInformation = new SavedClassInformation(section.isConfigurationSection(className)?section.getConfigurationSection(className):section.createSection(className));
         this.creationTime = section.isLong("creation-time")?section.getLong("creation-time",System.currentTimeMillis()):System.currentTimeMillis();
@@ -64,7 +65,7 @@ public class Profile {
         if (this.lastKnownLocation == null){
             lastKnownLocation = internalPlayer.getPlayer().getLocation();
         }
-        if (ProfilesPlus.isUsingEconomy()){
+        if (RPGProfiles.isUsingEconomy()){
             if (section.isDouble("balance")){
                 balance = section.getDouble("balance");
             }
@@ -78,6 +79,12 @@ public class Profile {
         this(id,className,slot,player.getUniqueId());
     }
 
+    public void notFresh() {
+        this.fresh = false;
+        this.section.set("fresh", false);
+        this.internalPlayer.saveConfig();
+    }
+
     private void assignName() {
         String name = StringUtils.capitalize(id);
         internalPlayer.getPlayer().displayName(Component.text(name));
@@ -85,7 +92,7 @@ public class Profile {
 
     }
 
-    public void update() {
+    public boolean update() {
         // Save the current active profile if it exists
         PlayerData playerData = PlayerData.get(internalPlayer.getUuid());
 
@@ -94,8 +101,9 @@ public class Profile {
             @Override
             public void run() {
 
-                saveToConfigurationSection();
-
+                if (!isFresh()) {
+                    saveToConfigurationSection(true, true);
+                }
                 updateMMOCore();
                 if (lastKnownLocation != null) {
                     internalPlayer.getPlayer().teleport(lastKnownLocation, PlayerTeleportEvent.TeleportCause.PLUGIN);
@@ -108,15 +116,18 @@ public class Profile {
                 loadInventory();
 
             }
-        }.runTask(ProfilesPlus.getInstance());
+        }.runTask(RPGProfiles.getInstance());
+        return true;
     }
     private void saveInventory(){
-        ProfilesPlus.getInventoryDatabase().saveInventory(internalPlayer.getUuid().toString(), index,BukkitSerialization.serializeInventory(internalPlayer.getPlayer().getInventory()));
+        RPGProfiles.getInventoryDatabase().saveInventory(internalPlayer.getUuid().toString(), index,BukkitSerialization.serializeInventory(internalPlayer.getPlayer().getInventory()));
     }
     public void loadInventory(){
-        ProfilesPlus.getInventoryDatabase().loadInventory(internalPlayer.getUuid().toString(), index);
+
+        RPGProfiles.getInventoryDatabase().loadInventory(internalPlayer.getUuid().toString(), index);
     }
     private void updateMMOCore(){
+
         mmoCorePlayer.setClass(MMOCore.plugin.classManager.getOrThrow(className));
         mmoCorePlayer.setExperience(classInformation.getExperience());
         mmoCorePlayer.setLevel(classInformation.getLevel());
@@ -146,7 +157,7 @@ public class Profile {
         }
 
     }
-    public void saveToConfigurationSection() {
+    public void saveToConfigurationSection(boolean locationBalance, boolean inventory) {
         section.set("id", id);
         section.set("className", className);
         if (!section.contains("creation-time")) {
@@ -193,11 +204,16 @@ public class Profile {
 
         classInformationSection.set("unlocked-items", new ArrayList<>(mmoCorePlayer.getUnlockedItems()));
 
-        saveLocationAndBalance();
+        if (locationBalance) {
+            saveLocationAndBalance();
+        }
 
         internalPlayer.saveConfig();
 
-        saveInventory();
+        if (inventory) {
+            saveInventory();
+        }
+
         created = true;
     }
 
@@ -239,8 +255,8 @@ public class Profile {
         locSection.set("yaw", loc.getYaw());
         locSection.set("pitch", loc.getPitch());
 
-        if (ProfilesPlus.isUsingEconomy()) {
-            Economy economy = ((ProfilesPlus) ProfilesPlus.getInstance()).getEconomy();
+        if (RPGProfiles.isUsingEconomy()) {
+            Economy economy = ((RPGProfiles) RPGProfiles.getInstance()).getEconomy();
             balance = economy.getBalance(player);
             section.set("balance", balance);
         }
@@ -252,9 +268,9 @@ public class Profile {
     }
 
     public ProfileIcon getIcon(){
-        String materialName = ProfilesPlus.getInstance().getConfig().getString("icons." + className + ".material");
-        int m = ProfilesPlus.getInstance().getConfig().getInt("icons." + className + ".customModel", 0);
-        List<String> list = ProfilesPlus.getInstance().getConfig().getStringList("icons." + className + ".lore");
+        String materialName = RPGProfiles.getInstance().getConfig().getString("icons." + className + ".material");
+        int m = RPGProfiles.getInstance().getConfig().getInt("icons." + className + ".customModel", 0);
+        List<String> list = RPGProfiles.getInstance().getConfig().getStringList("icons." + className + ".lore");
         String[] lore = list.toArray(value -> list.toArray(new String[0]));
 
         if (lore == null){

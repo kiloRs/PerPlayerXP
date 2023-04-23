@@ -26,68 +26,68 @@ spectator-location:
  #Icons for use (Customizable)
 icons:
   name:
-    material: PAPER
+    material: "PAPER"
     customModel: 0
-    name: Set Name
+    name: "Set Name"
     lore:
       - "Assign the name of the Profile!"
   class:
-    material: SHIELD
+    material: "SHIELD"
     customModel: 0
-    name: Set Class Type
+    name: "Set Class Type"
     lore:
       - "Assign the class type of the Profile"
   locked:
-    material: RED_STAINED_GLASS_PANE
+    material: "RED_STAINED_GLASS_PANE"
     customModel: 0
-    name: Locked Slot
+    name: "Locked Slot"
     lore:
       - ""
   available:
-    material: GREEN_STAINED_GLASS_PANE
+    material: "GREEN_STAINED_GLASS_PANE"
     customModel: 0
-    name: Available Slot
+    name: "Available Slot"
     lore:
       - ""
   cancel:
-    material: BARRIER
+    material: "BARRIER"
     customModel: 0
-    name: Cancel
+    name: "Cancel"
     lore:
       - "Cancel the current action"
   confirm:
-    material: EMERALD_BLOCK
+    material: "EMERALD_BLOCK"
     customModel: 0
-    name: Confirm
+    name: "Confirm"
     lore:
       - "Confirm the current action"
   back:
-    material: ARROW
+    material: "ARROW"
     customModel: 0
-    name: Back
+    name: "Back"
     lore:
       - "Go back to the previous menu"
   confirmDisabled:
-    material: REDSTONE_BLOCK
+    material: "REDSTONE_BLOCK"
     customModel: 0
-    name: Confirm
+    name: "Confirm"
     lore:
       - "Please select a class type before confirming."
   warrior:
-    material: IRON_SWORD
+    material: "IRON_SWORD"
     customModel: 0
-    name: Warrior
+    name: "Warrior"
     lore:
       - "A fierce warrior that excels in melee combat"
   mage:
-    material: BLAZE_ROD
+    material: "BLAZE_ROD"
     customModel: 0
-    name: Mage
+    name: "Mage"
     lore:
       - "A powerful mage that wields arcane magic"
   archer:
-    material: BOW
+    material: "BOW"
     customModel: 0
-    name: Archer
+    name: "Archer"
     lore:
       - "A skilled archer that rains arrows upon enemies"

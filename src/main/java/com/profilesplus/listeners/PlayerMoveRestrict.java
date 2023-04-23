@@ -1,29 +1,47 @@
 package com.profilesplus.listeners;
 
-import com.profilesplus.ProfilesPlus;
+import com.profilesplus.RPGProfiles;
 import com.profilesplus.SpectatorManager;
-import org.bukkit.Location;
-import org.bukkit.entity.Player;
+import com.profilesplus.menu.ProfilesMenu;
+import com.profilesplus.players.PlayerData;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 
 public class PlayerMoveRestrict implements Listener {
 
-    @EventHandler(priority = EventPriority.LOW,ignoreCancelled = true)
-    public void onPlayerMove(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
+    private final SpectatorManager spectatorManager;
+    private double aDouble;
 
-
-        SpectatorManager manager = ((ProfilesPlus) ProfilesPlus.getInstance()).getSpectatorManager();
-        if (manager.isWaiting(player)) {
-            Location spectatorLocation =  manager.getSpectatorLocation();
-            if (spectatorLocation == null){
-                spectatorLocation = event.getFrom();
+    public PlayerMoveRestrict(SpectatorManager spectatorManager) {
+        this.spectatorManager = spectatorManager;
+    }
+    @EventHandler
+    public void on(PlayerInteractEvent event){
+        if (spectatorManager.isWaiting(event.getPlayer())){
+            if (event.getAction().isRightClick()){
+                event.setCancelled(true);
+                new ProfilesMenu(RPGProfiles.getInstance(), PlayerData.get(event.getPlayer())).open();
             }
-            event.setTo(spectatorLocation);
-
+            else {
+                event.getPlayer().sendMessage("You must select or create a profile to continue!");
+            }
         }
+    }
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        if (spectatorManager.isWaiting(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerTeleport(PlayerTeleportEvent event) {
+        if (spectatorManager.isWaiting(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+
     }
 }

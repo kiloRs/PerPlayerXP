@@ -1,7 +1,7 @@
 package com.profilesplus.menu;
 
 
-import com.profilesplus.ProfilesPlus;
+import com.profilesplus.RPGProfiles;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
 import me.clip.placeholderapi.PlaceholderAPI;
@@ -20,7 +20,7 @@ public class ProfileRemoveMenu extends ConfirmCancelMenu {
     private final ProfilesMenu profilesMenu;
 
     public ProfileRemoveMenu(PlayerData playerData, Profile profile,@Nullable ProfilesMenu menu) {
-        super(playerData.getPlayer(), ProfilesPlus.getInstance(), "Remove Profile", 18);
+        super(playerData.getPlayer(), RPGProfiles.getInstance(), "Remove Profile", 18);
         this.playerData = playerData;
         this.profile = profile;
         this.profilesMenu = menu;
@@ -51,7 +51,7 @@ public class ProfileRemoveMenu extends ConfirmCancelMenu {
 
         // Reopen the ProfilesMenu to update the GUI
         playerData.getPlayer().closeInventory();
-        new ProfilesMenu(ProfilesPlus.getInstance(), playerData);
+        new ProfilesMenu(RPGProfiles.getInstance(), playerData);
 
     }
 

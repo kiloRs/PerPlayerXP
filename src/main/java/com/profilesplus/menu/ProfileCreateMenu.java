@@ -1,7 +1,7 @@
 package com.profilesplus.menu;
 
-import com.profilesplus.ProfilesPlus;
-import com.profilesplus.menu.text.NameInput;
+import com.profilesplus.RPGProfiles;
+import com.profilesplus.listeners.text.NameInput;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
 import lombok.Getter;
@@ -11,11 +11,13 @@ import org.bukkit.ChatColor;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Getter
 public class ProfileCreateMenu extends ConfirmCancelMenu {
@@ -27,9 +29,28 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
     private final int setNameSlot;
     private final PlayerData playerData;
     private boolean fromProfiles = false;
+    private final List<String> forbiddenNames = ((RPGProfiles) RPGProfiles.getInstance()).getForbiddenNames();
+    private final Pattern forbiddenNamePattern;
+
+
+    private Pattern createForbiddenNamePattern() {
+        StringBuilder patternBuilder = new StringBuilder("(?i).*(");
+        for (int i = 0; i < forbiddenNames.size(); i++) {
+            patternBuilder.append(forbiddenNames.get(i));
+            if (i < forbiddenNames.size() - 1) {
+                patternBuilder.append("|");
+            }
+        }
+        patternBuilder.append(").*");
+        return Pattern.compile(patternBuilder.toString());
+    }
+
+    public boolean isForbiddenName(String name) {
+        return forbiddenNamePattern.matcher(name).matches();
+    }
 
     public ProfileCreateMenu(PlayerData playerData,@Nullable ProfilesMenu menu) {
-        super(playerData.getPlayer(), ProfilesPlus.getInstance(), "Profile Creation", 27);
+        super(playerData.getPlayer(), RPGProfiles.getInstance(), "Profile Creation", 27);
         this.playerData = playerData;
         this.profilesMenu = menu;
 
@@ -55,21 +76,23 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
 
         // Set the "Set Class Type" slot and add the click listener
         setClassTypeSlot = 12;
-        setItem(setClassTypeSlot, ProfilesPlus.getIcons(getPlayerData().getPlayer()).getClassName(), event -> {
+        setItem(setClassTypeSlot, RPGProfiles.getIcons(getPlayerData().getPlayer()).getClassName(), event -> {
             ClassSelectionMenu classSelectionMenu = new ClassSelectionMenu(playerData.getPlayer(), this);
             classSelectionMenu.open();
         });
 
         // Set the "Set Name" slot and add the click listener
         setNameSlot = 14;
-        setItem(setNameSlot, ProfilesPlus.getIcons(getPlayerData().getPlayer()).getName(), event -> {
+        setItem(setNameSlot, RPGProfiles.getIcons(getPlayerData().getPlayer()).getName(), event -> {
             playerData.getPlayer().closeInventory();
             playerData.getPlayer().sendMessage("Please type the profile name in chat.");
 
+            playerData.getPlayer().setMetadata("textInput",new FixedMetadataValue(RPGProfiles.getInstance(),true));
             // Register the NameInput listener
             NameInput nameInput = new NameInput( this);
             Bukkit.getPluginManager().registerEvents(nameInput, plugin);
         });
+        forbiddenNamePattern = createForbiddenNamePattern();
     }
 
     @Override
