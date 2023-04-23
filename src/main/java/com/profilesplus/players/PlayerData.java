@@ -11,13 +11,14 @@ import net.milkbowl.vault.economy.Economy;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.jetbrains.annotations.Nullable;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,7 +30,8 @@ import java.util.UUID;
 
 @Getter
 public class PlayerData {
-
+    @Getter
+    private static final NamespacedKey ACTIVE_PROFILE_KEY = new NamespacedKey(ProfilesPlus.getInstance(), "activeProfile");
     @Getter
     private static final Map<UUID, PlayerData> playerDataInstances = new HashMap<>();
 
@@ -55,22 +57,27 @@ public class PlayerData {
     private PlayerData(UUID uuid) {
         this.uuid = uuid;
         this.player = Bukkit.getOfflinePlayer(uuid).getPlayer();
+        if (player == null){
+            throw new RuntimeException("Player error!");
+        }
         this.playerFile = new File(getPlayerDataFolder(), uuid + ".yml");
         this.mmoCore = net.Indyuce.mmocore.api.player.PlayerData.get(uuid);
         this.mmoItems = net.Indyuce.mmoitems.api.player.PlayerData.get(uuid);
         this.mythicLib = MMOPlayerData.get(uuid);
         this.activeProfile = null;
+
         loadConfig();
 
         // Check if the profiles section contains the active profile
-        int act = config.getInt("active");
-        if (config.isConfigurationSection("profiles." + act) && !config.getConfigurationSection("profiles." + act).getKeys(false).isEmpty()) {
-            String id = config.getString("profiles." + act + ".id", null);
-            this.activeProfile = new Profile(id, config.getString("profiles." + act + ".className"),act, uuid);
+        int act = player.getPersistentDataContainer().getOrDefault(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER,0);
+        if (act > 0) {
+            if (config.isConfigurationSection("profiles." + act) && !config.getConfigurationSection("profiles." + act).getKeys(false).isEmpty()) {
+                String id = config.getString("profiles." + act + ".id", null);
+                this.activeProfile = new Profile(id, config.getString("profiles." + act + ".className"), act, uuid);
+            }
+
+            activateProfile();
         }
-
-        activateProfile();
-
         if (activeProfile == null){
             ProfilesPlus.log("No Active Profile - Opening Profiles Menu!");
             new ProfilesMenu(ProfilesPlus.getInstance(),this).open();
@@ -97,10 +104,6 @@ public class PlayerData {
 
     public static PlayerData[] getAllInstances() {
         return playerDataInstances.values().toArray(new PlayerData[0]);
-    }
-
-    public YamlConfiguration getConfig() {
-        return config;
     }
 
     public void saveConfig() {
@@ -132,18 +135,14 @@ public class PlayerData {
         return dataFolder;
     }
 
-    @Nullable(value = "Empty Profile")
-    public Profile getActiveProfile(){
-        return activeProfile;
-    }
-
     public void saveProfiles() {
         for (Profile profile : profileMap.values()) {
             profile.saveToConfigurationSection();
         }
 
         if (getActiveProfile() != null) {
-            config.set("active", getActiveProfile().getIndex());
+            player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, getActiveProfile().getIndex());
+            player.saveData();
         }
         saveConfig();
     }
@@ -162,9 +161,9 @@ public class PlayerData {
             }
         }
 
-        int activeSlot = config.getInt("active", -1);
+        int activeSlot = player.getPersistentDataContainer().has(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER)?player.getPersistentDataContainer().get(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER):-1;
 
-        if (activeSlot != -1 && profileMap.containsKey(activeSlot) && profileMap.get(activeSlot).isCreated()) {
+        if (activeSlot > 0 && profileMap.containsKey(activeSlot) && profileMap.get(activeSlot).isCreated()) {
             activeProfile =  profileMap.get(activeSlot);
         }
     }
@@ -204,17 +203,14 @@ public class PlayerData {
         if (event.isCancelled()) {
             return null;
         }
-        profileMap.put(availableSlot, newProfile); // Add the new profile to the map
+        profileMap.put(availableSlot, event.getProfile()); // Add the new profile to the map
 
-        newProfile.saveToConfigurationSection();
+        profileMap.get(availableSlot).saveToConfigurationSection();
 
-        if (activeProfile != null && activate){
-            activeProfile.saveToConfigurationSection();
-            profileMap.get(availableSlot).update();
+        if (activate){
+            setActiveProfile(profileMap.get(availableSlot));
         }
-        else if (activate){
-            profileMap.get(availableSlot).update();
-        }
+
 
         return event.getProfile();
     }
@@ -243,30 +239,32 @@ public class PlayerData {
         if (event.isCancelled()) {
             return null;
         }
-        profileMap.put(slot, newProfile); // Add the new profile to the map
+        profileMap.put(slot, event.getProfile()); // Add the new profile to the map
 
         newProfile.saveToConfigurationSection();
 
-        if (activeProfile != null && activate){
-            activeProfile.saveToConfigurationSection();
-            profileMap.get(slot).update();
-        }
-        else if (activate){
-            profileMap.get(slot).update();
+        if (activate){
+            setActiveProfile(profileMap.get(slot));
         }
 
         return event.getProfile();
     }
 
+    public void setActiveProfile(Profile profile){
+        this.setActiveProfile(profile.getIndex());
+    }
     public void setActiveProfile(int newSlot) {
-        if (activeProfile.getIndex()==newSlot  ){
-            ProfilesPlus.log("Cannot change to same active profile of " + newSlot);
-            return;
+        if (activeProfile != null) {
+            if (activeProfile.getIndex() == newSlot) {
+                return;
+            }
+            if (activeProfile.getId().equalsIgnoreCase(getProfiles().get(newSlot).getId()) && getProfiles().containsKey(newSlot)) {
+                return;
+            }
+
+            activeProfile.saveToConfigurationSection();
         }
-        if (activeProfile.getId().equalsIgnoreCase(getProfiles().get(newSlot).getId()) && getProfiles().containsKey(newSlot)){
-            ProfilesPlus.log("Cannot change to same active profile of " + player.getName());
-            return;
-        }
+
         if (profileMap.containsKey(newSlot)) {
             // Save the current active profile's inventory to the database
             Profile currentProfile = getActiveProfile();
@@ -294,11 +292,31 @@ public class PlayerData {
                     economy.depositPlayer(player, newProfile.getBalance());
                 }
 
+
+                player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER,newSlot);
                 saveConfig();
+                return;
+            }
+            else {
+                ProfilesPlus.log("Error: Profile is not save or register currently in " + player.getName() + " 's profile!");
+
+                if (profileMap.isEmpty()){
+                    setLimbo(activeProfile==null);
+                }
                 return;
             }
         }
         ProfilesPlus.log("Profile in slot: " + newSlot + " not available to be activeProfile of " + player.getName());
+    }
+
+    private void setLimbo(boolean limbo) {
+
+        if (limbo) {
+            ((ProfilesPlus) ProfilesPlus.getInstance()).getSpectatorManager().setWaiting(player);
+        }
+        else {
+            ((ProfilesPlus) ProfilesPlus.getInstance()).getSpectatorManager().removeWaiting(player);
+        }
     }
 
 
@@ -350,4 +368,5 @@ public class PlayerData {
         config.set("profiles." + number,null);
         profile = null;
     }
+
 }

@@ -18,9 +18,9 @@ public class NameInput implements Listener {
     private final PlayerData playerData;
     private final ProfileCreateMenu previousMenu;
 
-    public NameInput(Player player, PlayerData playerData, ProfileCreateMenu previousMenu) {
-        this.player = player;
-        this.playerData = playerData;
+    public NameInput(ProfileCreateMenu previousMenu) {
+        this.player = previousMenu.getPlayerData().getPlayer();
+        this.playerData = previousMenu.getPlayerData();
         this.previousMenu = previousMenu;
     }
 

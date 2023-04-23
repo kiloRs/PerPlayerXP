@@ -3,12 +3,7 @@ package com.profilesplus;
 import com.profilesplus.commands.DeleteProfilesCommand;
 import com.profilesplus.commands.ProfileCreateCommand;
 import com.profilesplus.commands.ProfilesCommand;
-import com.profilesplus.listeners.InventoryListener;
-import com.profilesplus.listeners.PlayerDataListener;
-import com.profilesplus.listeners.PlayerJoinListener;
-import com.profilesplus.listeners.PlayerMoveRestrict;
-import com.profilesplus.menu.text.ChatEventListener;
-import com.profilesplus.menu.text.InputTextManager;
+import com.profilesplus.listeners.*;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.saving.InventoryDatabase;
 import lombok.Getter;
@@ -18,6 +13,7 @@ import net.milkbowl.vault.permission.Permission;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -31,7 +27,6 @@ import java.util.logging.Logger;
 public final class ProfilesPlus extends JavaPlugin {
     @Getter
     private static Plugin instance;
-    private InputTextManager textManager;
     private SpectatorManager spectatorManager;
     private Economy economy;
     private Chat chat;
@@ -45,8 +40,8 @@ public final class ProfilesPlus extends JavaPlugin {
         Logger.getLogger("Minecraft").info("[RPGProfiles] " + s);
     }
 
-    public static IconsManager getIcons() {
-        return new IconsManager();
+    public static IconsManager getIcons(Player player) {
+        return new IconsManager(player);
     }
 
     public static boolean isLogging() {
@@ -57,7 +52,6 @@ public final class ProfilesPlus extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
-        textManager = new InputTextManager();
         spectatorManager = new SpectatorManager(this);
         inventoryDatabase = new InventoryDatabase("inventories.db");
         saveDefaultConfig();
@@ -110,11 +104,18 @@ public final class ProfilesPlus extends JavaPlugin {
 
 
     private void registerListeners() {
-        Bukkit.getPluginManager().registerEvents(new ChatEventListener(textManager),this);
         Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this),this);
         Bukkit.getPluginManager().registerEvents(new PlayerMoveRestrict(),this);
         Bukkit.getPluginManager().registerEvents(new InventoryListener(),this);
 
+        if (getConfig().isBoolean("item-ownership.enable") && getConfig().getBoolean("item-ownership.enable")){
+            if (!Bukkit.getPluginManager().isPluginEnabled("MythicMobs")){
+                log("Mythic Mobs must be existing for item-ownership from config to work!");
+            }
+            else {
+                Bukkit.getPluginManager().registerEvents(new PlayerItemListener(this),this);
+            }
+        }
 
         if (!getConfig().isInt("minsToSave")){
             getConfig().set("minsToSave",10);

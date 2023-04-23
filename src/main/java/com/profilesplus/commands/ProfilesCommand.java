@@ -1,6 +1,5 @@
 package com.profilesplus.commands;
 
-import com.profilesplus.IconsManager;
 import com.profilesplus.ProfilesPlus;
 import com.profilesplus.menu.ProfilesMenu;
 import com.profilesplus.players.PlayerData;
@@ -13,10 +12,11 @@ import org.jetbrains.annotations.NotNull;
 
 @Getter
 public class ProfilesCommand implements CommandExecutor {
-    private final IconsManager iconManager;
+
+    private final ProfilesPlus profilesPlus;
 
     public ProfilesCommand(ProfilesPlus profilesPlus) {
-        this.iconManager = ProfilesPlus.getIcons();
+        this.profilesPlus = profilesPlus;
     }
 
     @Override

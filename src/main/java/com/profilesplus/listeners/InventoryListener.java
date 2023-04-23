@@ -15,12 +15,20 @@ public class InventoryListener implements Listener {
     @EventHandler
     public void onClick(InventoryClickEvent event) {
         InventoryHolder holder = event.getInventory().getHolder();
+        if (event.getClickedInventory().getHolder() instanceof InventoryGUI inventoryGUI){
+            event.setCancelled(true);
+            if (ProfilesPlus.isLogging()){
+                ProfilesPlus.log("Clicking InventoryGUI Menu... " + inventoryGUI.getClass().getName() + " [ RawSlot:" + event.getRawSlot() + "- Slot:" + event.getSlot() +" ]");
+            }
+            inventoryGUI.processClickEvent(event);
+
+        }
         if (holder instanceof InventoryGUI inventoryGUI) {
             event.setCancelled(true);
             if (ProfilesPlus.isLogging()){
                 ProfilesPlus.log("Clicking InventoryGUI Menu: " + inventoryGUI.getClass().getName() + " [ RawSlot:" + event.getRawSlot() + "- Slot:" + event.getSlot() +" ]");
             }
-            inventoryGUI.handleClickEvent(event);
+            inventoryGUI.processClickEvent(event);
         }
     }
 

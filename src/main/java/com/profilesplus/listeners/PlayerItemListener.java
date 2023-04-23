@@ -22,14 +22,14 @@ public class PlayerItemListener implements Listener {
         private final int ownershipDuration;
 
         public PlayerItemListener(Plugin plugin) {
-            if (!plugin.getConfig().isInt("item-ownership-duration")){
-                plugin.getConfig().addDefault("item-ownership-duration",60);
+            if (!plugin.getConfig().isInt("item-ownership.duration")){
+                plugin.getConfig().addDefault("item-ownership.duration",60);
                 ArrayList<String> comments = new ArrayList<>();
                 comments.add("#Amount of time in minutes the item will be owned by the killing player!");
-                plugin.getConfig().setComments("item-ownership-duration", comments);
+                plugin.getConfig().setComments("item-ownership.duration", comments);
                 plugin.saveConfig();
             }
-            this.ownershipDuration = plugin.getConfig().getInt("item-ownership-duration") * 1000; // Convert to milliseconds
+            this.ownershipDuration = plugin.getConfig().getInt("item-ownership.duration") * 1000; // Convert to milliseconds
             plugin.getServer().getPluginManager().registerEvents(this, plugin);
         }
     @EventHandler(priority = EventPriority.HIGH)

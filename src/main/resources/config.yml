@@ -11,4 +11,83 @@ forbiddenNames:
   - shitty
 debug: true
 minsToSave: 10
-item-ownership-duration: 60 #Measured in seconds!
+item-ownership:
+ enable: false
+ duration: 60 #Measured in seconds!
+
+spectator-location:
+  world: "world"
+  x: 0.0
+  y: 100.0
+  z: 0.0
+  pitch: 1
+  yaw: 1
+
+ #Icons for use (Customizable)
+icons:
+  name:
+    material: PAPER
+    customModel: 0
+    name: Set Name
+    lore:
+      - "Assign the name of the Profile!"
+  class:
+    material: SHIELD
+    customModel: 0
+    name: Set Class Type
+    lore:
+      - "Assign the class type of the Profile"
+  locked:
+    material: RED_STAINED_GLASS_PANE
+    customModel: 0
+    name: Locked Slot
+    lore:
+      - ""
+  available:
+    material: GREEN_STAINED_GLASS_PANE
+    customModel: 0
+    name: Available Slot
+    lore:
+      - ""
+  cancel:
+    material: BARRIER
+    customModel: 0
+    name: Cancel
+    lore:
+      - "Cancel the current action"
+  confirm:
+    material: EMERALD_BLOCK
+    customModel: 0
+    name: Confirm
+    lore:
+      - "Confirm the current action"
+  back:
+    material: ARROW
+    customModel: 0
+    name: Back
+    lore:
+      - "Go back to the previous menu"
+  confirmDisabled:
+    material: REDSTONE_BLOCK
+    customModel: 0
+    name: Confirm
+    lore:
+      - "Please select a class type before confirming."
+  warrior:
+    material: IRON_SWORD
+    customModel: 0
+    name: Warrior
+    lore:
+      - "A fierce warrior that excels in melee combat"
+  mage:
+    material: BLAZE_ROD
+    customModel: 0
+    name: Mage
+    lore:
+      - "A powerful mage that wields arcane magic"
+  archer:
+    material: BOW
+    customModel: 0
+    name: Archer
+    lore:
+      - "A skilled archer that rains arrows upon enemies"

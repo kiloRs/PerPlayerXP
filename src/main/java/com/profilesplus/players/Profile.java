@@ -89,19 +89,7 @@ public class Profile {
         // Save the current active profile if it exists
         PlayerData playerData = PlayerData.get(internalPlayer.getUuid());
 
-        if (playerData.getActiveProfile() != null) {
-//        if (playerData.getActiveProfile() != null){
-//            playerData.getActiveProfile().saveToConfigurationSection();
-//            ProfilesPlus.getInventoryDatabase().saveInventory(internalPlayer.getUuid().toString(), playerData.getActiveSlot(), BukkitSerialization.serializeInventory(playerData.getPlayer().getInventory()));
-//        }
 
-            if (!playerData.getActiveProfile().id.equalsIgnoreCase(this.id)) {
-                playerData.setActiveProfile(this.index);
-            }
-        }
-        else {
-            playerData.setActiveProfile(this.index);
-        }
         new BukkitRunnable(){
             @Override
             public void run() {
@@ -264,8 +252,8 @@ public class Profile {
     }
 
     public ProfileIcon getIcon(){
-        String materialName = ProfilesPlus.getInstance().getConfig().getString("icon." + className + ".material");
-        int m = ProfilesPlus.getInstance().getConfig().getInt("icon." + className + ".customModel", 0);
+        String materialName = ProfilesPlus.getInstance().getConfig().getString("icons." + className + ".material");
+        int m = ProfilesPlus.getInstance().getConfig().getInt("icons." + className + ".customModel", 0);
         List<String> list = ProfilesPlus.getInstance().getConfig().getStringList("icons." + className + ".lore");
         String[] lore = list.toArray(value -> list.toArray(new String[0]));
 

@@ -8,6 +8,7 @@ import com.profilesplus.menu.ProfilesMenu;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
 import net.Indyuce.mmocore.MMOCore;
+import net.Indyuce.mmocore.api.event.AsyncPlayerDataLoadEvent;
 import net.Indyuce.mmocore.api.player.profess.PlayerClass;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
@@ -15,7 +16,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -29,8 +29,8 @@ public class PlayerJoinListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void onPlayerJoin(PlayerJoinEvent event) {
+    @EventHandler()
+    public void onPlayerJoin(AsyncPlayerDataLoadEvent event) {
         PlayerData playerData = PlayerData.get(event.getPlayer());
         Profile activeProfile = playerData.getActiveProfile();
 
@@ -69,7 +69,7 @@ public class PlayerJoinListener implements Listener {
 
         }
     }
-    @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler(priority = EventPriority.LOWEST,ignoreCancelled = true)
     public void onInventoryClose(InventoryCloseEvent event) {
         if (!(event.getPlayer() instanceof Player player)) {
             return;
@@ -78,16 +78,30 @@ public class PlayerJoinListener implements Listener {
         // Replace 'Create Profile' with the title of the inventory you want to trigger this behavior
         PlayerData p = PlayerData.get(player);
         if (p.getActiveProfile() != null){
+            p.getActiveProfile().update();;
             return;
         }
 
-        if ((event.getInventory().getHolder() instanceof ProfileCreateMenu createMenu && p.getActiveProfile() == null)) {
+        if (event.getInventory().getHolder() instanceof ProfilesMenu profilesMenu){
             Location spectatorLocation = getSpectatorLocation();
-            player.teleport(spectatorLocation);
             player.setGameMode(GameMode.SPECTATOR);
+
+            player.teleport(spectatorLocation, PlayerTeleportEvent.TeleportCause.PLUGIN);
             player.setFlySpeed(0);
 
             ProfilesPlus.log("Teleport via InventoryCloseEvent");
+            ((ProfilesPlus) ProfilesPlus.getInstance()).getSpectatorManager().setWaiting(player);
+
+        }
+        if ((event.getInventory().getHolder() instanceof ProfileCreateMenu createMenu)) {
+            Location spectatorLocation = getSpectatorLocation();
+            player.setGameMode(GameMode.SPECTATOR);
+            player.teleport(spectatorLocation, PlayerTeleportEvent.TeleportCause.PLUGIN);
+            player.setFlySpeed(0);
+
+            ProfilesPlus.log("Teleport via InventoryCloseEvent");
+            ((ProfilesPlus) ProfilesPlus.getInstance()).getSpectatorManager().setWaiting(player);
+
         }
     }
 

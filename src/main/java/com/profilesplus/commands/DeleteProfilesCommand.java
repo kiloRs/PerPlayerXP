@@ -40,7 +40,7 @@ public class DeleteProfilesCommand implements CommandExecutor {
             sender.sendMessage("No Profile on "+ amount);
             return true;
         }
-        new ProfileRemoveMenu(playerData,profile).open();
+        new ProfileRemoveMenu(playerData,profile,null).open();
         return true;
     }
 }

@@ -3,17 +3,16 @@ package com.profilesplus.menu;
 import com.profilesplus.ProfilesPlus;
 import net.Indyuce.mmocore.MMOCore;
 import net.Indyuce.mmocore.api.player.profess.PlayerClass;
-import net.kyori.adventure.key.Key;
-import net.kyori.adventure.sound.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ClassSelectionMenu extends ConfirmCancelMenu {
@@ -26,8 +25,8 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
         Map<String, ItemStack> classIcons = new HashMap<>();
 
         for (PlayerClass aClass : MMOCore.plugin.classManager.getAll()) {
-            if (ProfilesPlus.getIcons().hasClassIcon(aClass.getId())) {
-                classIcons.put(aClass.getId(), ProfilesPlus.getIcons().getClassIcon(aClass.getId()));
+            if (ProfilesPlus.getIcons(player).hasClassIcon(aClass.getId())) {
+                classIcons.put(aClass.getId(), ProfilesPlus.getIcons(player).getClassIcon(aClass.getId()));
             }
         }
 
@@ -52,7 +51,7 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
                     }
                 }
                 classIcon.addUnsafeEnchantment(org.bukkit.enchantments.Enchantment.ARROW_DAMAGE, 1);
-                updateConfirmButton();
+                updateConfirmButtonAppearance();
             });
         }
     }
@@ -60,6 +59,16 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
     @Override
     protected boolean canConfirm() {
         return selectedClassType != null;
+    }
+
+    @Override
+    protected String failedConfirmMessage() {
+        return "";
+    }
+
+    @Override
+    protected String successfulConfirmMessage() {
+        return "";
     }
 
     @Override
@@ -83,9 +92,13 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
     }
 
     @Override
-    public void handleClickEvent(InventoryClickEvent event) {
+    public List<String> confirmLore() {
+
+        //todo fix lore
+        return new ArrayList<>();
 
     }
+
 
     @Override
     public void handleCloseEvent(InventoryCloseEvent event) {

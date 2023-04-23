@@ -1,6 +1,5 @@
 package com.profilesplus.menu;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -37,7 +36,14 @@ public abstract class InventoryGUI implements InventoryHolder {
         actions.put(slot, onClick);
     }
 
-    public abstract void handleClickEvent(InventoryClickEvent event);
+    public void processClickEvent(InventoryClickEvent event) {
+        // Process the click event based on the actions map
+        event.setCancelled(true);
+        int clickedSlot = event.getRawSlot();
+        if (actions.containsKey(clickedSlot)) {
+            actions.get(clickedSlot).accept(event);
+        }
+    }
 
     public abstract void handleCloseEvent(InventoryCloseEvent event);
 }
