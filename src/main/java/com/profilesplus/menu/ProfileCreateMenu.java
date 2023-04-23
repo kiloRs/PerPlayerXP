@@ -4,6 +4,7 @@ import com.profilesplus.RPGProfiles;
 import com.profilesplus.listeners.text.NameInput;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
+import io.lumine.mythic.lib.MythicLib;
 import lombok.Getter;
 import net.Indyuce.mmocore.MMOCore;
 import org.bukkit.Bukkit;
@@ -23,14 +24,15 @@ import java.util.regex.Pattern;
 public class ProfileCreateMenu extends ConfirmCancelMenu {
     private final ProfilesMenu profilesMenu;
     private final int slotUse;
-    private String className;
-    private String profileName;
+    private String className = null;
+    private String profileName = null;
     private final int setClassTypeSlot;
     private final int setNameSlot;
     private final PlayerData playerData;
     private boolean fromProfiles = false;
     private final List<String> forbiddenNames = ((RPGProfiles) RPGProfiles.getInstance()).getForbiddenNames();
     private final Pattern forbiddenNamePattern;
+    private boolean input = false;
 
 
     private Pattern createForbiddenNamePattern() {
@@ -53,6 +55,7 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
         super(playerData.getPlayer(), RPGProfiles.getInstance(), "Profile Creation", 27);
         this.playerData = playerData;
         this.profilesMenu = menu;
+        this.input = false;
 
         if (profilesMenu != null) {
             slotUse = profilesMenu.getSlotUse();
@@ -78,19 +81,21 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
         setClassTypeSlot = 12;
         setItem(setClassTypeSlot, RPGProfiles.getIcons(getPlayerData().getPlayer()).getClassName(), event -> {
             ClassSelectionMenu classSelectionMenu = new ClassSelectionMenu(playerData.getPlayer(), this);
+            getPlayerData().getPlayer().closeInventory(InventoryCloseEvent.Reason.PLUGIN);
             classSelectionMenu.open();
         });
 
         // Set the "Set Name" slot and add the click listener
         setNameSlot = 14;
         setItem(setNameSlot, RPGProfiles.getIcons(getPlayerData().getPlayer()).getName(), event -> {
-            playerData.getPlayer().closeInventory();
-            playerData.getPlayer().sendMessage("Please type the profile name in chat.");
+            playerData.getPlayer().closeInventory(InventoryCloseEvent.Reason.PLUGIN);
+            playerData.getPlayer().sendMessage(MythicLib.plugin.parseColors("Please type the profile name in chat."));
 
             playerData.getPlayer().setMetadata("textInput",new FixedMetadataValue(RPGProfiles.getInstance(),true));
             // Register the NameInput listener
             NameInput nameInput = new NameInput( this);
             Bukkit.getPluginManager().registerEvents(nameInput, plugin);
+            input = true;
         });
         forbiddenNamePattern = createForbiddenNamePattern();
     }
@@ -179,9 +184,19 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
 
     @Override
     public void handleCloseEvent(InventoryCloseEvent event) {
-        if (profilesMenu != null){
-            event.getPlayer().closeInventory();
-            profilesMenu.open();
+        if (event.getPlayer().getUniqueId().equals(player.getUniqueId())){
+            if (!(event.getInventory().getHolder() instanceof InventoryGUI inventoryGUI)){
+                return;
+            }
+            if (inventoryGUI instanceof ProfileCreateMenu createMenu){
+                if (createMenu.profilesMenu == null){
+                    return;
+                }
+                if (createMenu.input){
+                    return;
+                }
+                createMenu.profilesMenu.open();
+            }
         }
     }
     @Override

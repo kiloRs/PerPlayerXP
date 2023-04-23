@@ -3,11 +3,10 @@ package com.profilesplus.menu;
 import com.profilesplus.RPGProfiles;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
+import io.lumine.mythic.lib.MythicLib;
 import lombok.Getter;
-import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
@@ -20,7 +19,7 @@ public class ProfilesMenu extends InventoryGUI {
     private int slotUse = 0;
 
     public ProfilesMenu(Plugin plugin, PlayerData playerData) {
-        super(playerData.getPlayer(), plugin, "Profiles Menu", 54);
+        super(playerData.getPlayer(), plugin, MythicLib.plugin.parseColors("Profiles"), 54);
         this.playerData = playerData;
         Player player = playerData.getPlayer();
 
@@ -31,7 +30,7 @@ public class ProfilesMenu extends InventoryGUI {
 
             ItemStack icon;
 
-            boolean hasPermission = i < 5 || player.hasPermission("rpgprofiles.slot." + (i + 1));
+            boolean hasPermission = i < 5 || player.hasPermission(PlayerData.getPERMISSION_PREFIX() + inventorySlotToProfileSlot(slot));
 
             if (profile != null && hasPermission) {
                 icon = profile.getIcon().getItemStack();
@@ -48,12 +47,14 @@ public class ProfilesMenu extends InventoryGUI {
                 if (profile != null && hasPermission) {
                     // Left click to activate profile, shift-right click to delete profile
                     if (event.isLeftClick()) {
-                        playerData.setActiveProfile(profile);
+                        playerData.changeProfile(profile);
                         playerData.getPlayer().sendMessage("Profile activated: " + profile.getIndex() +  " " + profile.getId() + " for " + player.getName());
                     } else if (event.isShiftClick() && event.isRightClick()) {
+                        this.close(InventoryCloseEvent.Reason.PLUGIN);
                         new ProfileRemoveMenu(playerData,profile,this).open();
                     }
                 } else if (profile == null && hasPermission) {
+                    this.close(InventoryCloseEvent.Reason.PLUGIN);
                     new ProfileCreateMenu(playerData,this).open();
                 } else if (profile != null) {
                     player.sendMessage("You cannot delete the profile of a locked slot.");
@@ -64,15 +65,18 @@ public class ProfilesMenu extends InventoryGUI {
 
     @Override
     public void handleCloseEvent(InventoryCloseEvent event) {
+        if (!(event.getInventory().getHolder() instanceof InventoryGUI inventoryGUI)){
+            return;
+        }
+        RPGProfiles.log("Menu Closing: " + inventoryGUI.getClass().getSimpleName());
+        RPGProfiles.log("Reason for closing profiles menu: " + event.getReason().name());
         // Handle any additional close events for the ProfilesMenu
-        if (event.getPlayer().hasMetadata("profile")){
-            if (!event.getPlayer().getMetadata("profile").get(0).asBoolean()){
-                ((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager().setWaiting(((Player) event.getPlayer()));
-                event.getPlayer().teleport(((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager().getSpectatorLocation(), PlayerTeleportEvent.TeleportCause.PLUGIN);
-                event.getPlayer().setGameMode(GameMode.SPECTATOR);
-                ((Player) event.getPlayer()).setFlySpeed(0);
 
-                event.getPlayer().sendMessage("You must select a profile or create a new profile!");
+        if (PlayerData.get((Player) event.getPlayer()).getProfileMap().isEmpty() || PlayerData.get(((Player) event.getPlayer())).getActiveProfile() == null) {
+
+            if (((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager().isWaiting(((Player) event.getPlayer()))) {
+                ((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager().setWaiting(player);
+                return;
             }
         }
     }
@@ -101,20 +105,8 @@ public class ProfilesMenu extends InventoryGUI {
         return -1; // Return -1 if not a valid slot
     }
     public static int[] getCenterSlots() {
-        centerSlots = new int[3 * 5];
-        int inventorySize = 54;
-        int slotsPerRow = 9;
-
-        // Calculate the starting slot for the center area
-        int centerRowStart = (inventorySize / 2) - (slotsPerRow / 2) - 1;
-        int index = 0;
-
-        for (int row = 0; row < 3; row++) {
-            for (int column = 0; column < 5; column++) {
-                centerSlots[index] = centerRowStart + column + (row * slotsPerRow);
-                index++;
-            }
-        }
+        // Directly initialize the centerSlots array with the desired slot numbers
+        centerSlots = new int[]{11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 29, 30, 31, 32, 33};
 
         return centerSlots;
     }

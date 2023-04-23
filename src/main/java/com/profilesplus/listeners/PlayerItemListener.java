@@ -41,12 +41,12 @@ public class PlayerItemListener implements Listener {
             return;
         }
 
-        if (System.currentTimeMillis() > ownership.getExpiration()) {
+        if (System.currentTimeMillis() > ownership.expiration()) {
             itemOwnerships.remove(item);
             return;
         }
 
-        if (!event.getPlayer().getUniqueId().equals(ownership.getOwner())) {
+        if (!event.getPlayer().getUniqueId().equals(ownership.owner())) {
             event.setCancelled(true);
         }
     }
@@ -76,12 +76,12 @@ public class PlayerItemListener implements Listener {
                 return;
             }
 
-            if (System.currentTimeMillis() > ownership.getExpiration()) {
+            if (System.currentTimeMillis() > ownership.expiration()) {
                 itemOwnerships.remove(item);
                 return;
             }
 
-            if (!event.getPlayer().getUniqueId().equals(ownership.getOwner())) {
+            if (!event.getPlayer().getUniqueId().equals(ownership.owner())) {
                 event.setCancelled(true);
             }
         }

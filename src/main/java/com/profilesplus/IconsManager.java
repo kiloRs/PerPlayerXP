@@ -86,7 +86,7 @@ public class IconsManager {
 
         List<String> lore = config.getStringList(configPath + ".lore");
         if (lore.isEmpty()) {
-            lore.add(defaultLore);
+            lore.add(MythicLib.plugin.parseColors(defaultLore));
         }
 
         List<Component> components = new ArrayList<>();

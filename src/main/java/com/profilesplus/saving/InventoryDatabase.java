@@ -15,9 +15,9 @@ public class InventoryDatabase {
 
     public InventoryDatabase(String fileName) {
         Path path = Paths.get(RPGProfiles.getInstance().getDataFolder().getPath(), fileName);
-        RPGProfiles.log("Inventory db stored at: " + path.toString());
+        RPGProfiles.log("Inventory db stored at: " + path);
         try {
-            String url = "jdbc:sqlite:"  + path.toString();
+            String url = "jdbc:sqlite:"  + path;
             connection = DriverManager.getConnection(url);
             createTable();
         } catch (SQLException e) {

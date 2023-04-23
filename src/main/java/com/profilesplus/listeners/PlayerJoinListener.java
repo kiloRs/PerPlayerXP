@@ -4,8 +4,6 @@ package com.profilesplus.listeners;
 import com.profilesplus.RPGProfiles;
 import com.profilesplus.SpectatorManager;
 import com.profilesplus.events.ProfileCreateEvent;
-import com.profilesplus.menu.InventoryGUI;
-import com.profilesplus.menu.ProfileCreateMenu;
 import com.profilesplus.menu.ProfilesMenu;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
@@ -19,7 +17,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -45,29 +42,14 @@ public class PlayerJoinListener implements Listener {
         PlayerData playerData = PlayerData.get(event.getPlayer());
         Profile activeProfile = playerData.getActiveProfile();
 
-        if (activeProfile == null && playerData.getProfileMap().isEmpty()) {
-            // Open the CreateProfileMenu
-            ProfileCreateMenu menu = new ProfileCreateMenu(playerData,null);
-            menu.open();
-
-            event.getPlayer().sendMessage((MythicLib.plugin.parseColors("&eOpening Profile Create Menu from Async Event")));
-
-            // Set the player to spectator mode and disable movement
-
-            RPGProfiles.log("No Profiles Locate for Player... " + playerData.getPlayer().getName());
-
-            // Use ProtocolLib or other methods to restrict movement
-        }
-        else if (!playerData.getProfileMap().isEmpty()){
-            ProfilesMenu menu = new ProfilesMenu(RPGProfiles.getInstance(),playerData);
-            menu.open();
-            event.getPlayer().sendMessage(MythicLib.plugin.parseColors("&eOpening Profiles Menu from Async Event"));
-
+        if (activeProfile == null || playerData.getProfiles().isEmpty()){
+            playerData.getPlayer().sendMessage(MythicLib.plugin.parseColors("&cYou currently have no profiles!"));
+            ProfilesMenu profilesMenu = new ProfilesMenu(RPGProfiles.getInstance(), playerData);
+            profilesMenu.open();
         }
         else {
             activeProfile.update();
-
-            event.getPlayer().sendMessage(MythicLib.plugin.parseColors("&aProfile assigning from async event: " + activeProfile.getId()));
+            event.getPlayer().sendMessage(MythicLib.plugin.parseColors("&aYour profile was loaded!"));
 
             RPGProfiles.log("Activation of Profile: " + activeProfile.getId() + " : " + activeProfile.getIndex());
             return;
@@ -75,40 +57,7 @@ public class PlayerJoinListener implements Listener {
 
         }
     }
-    @EventHandler(priority = EventPriority.LOWEST,ignoreCancelled = true)
-    public void onInventoryClose(InventoryCloseEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) {
-            return;
-        }
-        if (event.getReason() != InventoryCloseEvent.Reason.PLUGIN || event.getReason() != InventoryCloseEvent.Reason.UNKNOWN){
-            RPGProfiles.log("Close - " + event.getReason());
-            return;
-        }
 
-        SpectatorManager manager = ((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager();
-
-        if (event.getInventory().getHolder() instanceof ProfilesMenu profilesMenu){
-            if (manager.isWaiting((Player) event.getPlayer())){
-                event.getPlayer().sendMessage("You are waiting!");
-                return;
-            }
-            RPGProfiles.log("ProfilesMenu waiting...");
-            return;
-        }
-        if ((event.getInventory().getHolder() instanceof ProfileCreateMenu createMenu)) {
-            if (manager.isWaiting((Player) event.getPlayer())){
-                event.getPlayer().sendMessage("You are waiting!");
-                return;
-            }
-            RPGProfiles.log("ProfileCreateMenu waiting...");
-            return;
-        }
-
-        if (event.getInventory().getHolder() instanceof InventoryGUI inventoryGUI){
-            return;
-        }
-        RPGProfiles.log("Close Menu - Non InventoryGUI");
-    }
 
     @EventHandler(priority = EventPriority.LOWEST,ignoreCancelled = true)
     public void onProfileCreate(ProfileCreateEvent event) {

@@ -101,6 +101,7 @@ public final class RPGProfiles extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this),this);
         Bukkit.getPluginManager().registerEvents(new PlayerMoveRestrict(spectatorManager),this);
         Bukkit.getPluginManager().registerEvents(new InventoryListener(),this);
+        Bukkit.getPluginManager().registerEvents(new ProfileListener(),this);
 
         if (getConfig().isBoolean("item-ownership.enable") && getConfig().getBoolean("item-ownership.enable")){
             if (!Bukkit.getPluginManager().isPluginEnabled("MythicMobs")){

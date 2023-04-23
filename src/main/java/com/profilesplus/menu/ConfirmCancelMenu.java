@@ -1,6 +1,7 @@
 package com.profilesplus.menu;
 
 import com.profilesplus.RPGProfiles;
+import lombok.Getter;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
@@ -10,6 +11,7 @@ import org.bukkit.plugin.Plugin;
 import java.util.List;
 
 
+@Getter
 public abstract class ConfirmCancelMenu extends InventoryGUI {
     protected final ItemStack cancelButton;
     protected final ItemStack confirmButton;
@@ -35,6 +37,7 @@ public abstract class ConfirmCancelMenu extends InventoryGUI {
 
         setItem(size - 9, cancelButton, this::onCancel);
         setItem(size - 1, confirmButton, event -> {
+
             if (canConfirm()) {
                 onConfirm(event);
                 player.sendMessage(successfulConfirmMessage());

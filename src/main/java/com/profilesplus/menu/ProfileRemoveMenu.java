@@ -47,18 +47,30 @@ public class ProfileRemoveMenu extends ConfirmCancelMenu {
     @Override
     protected void onConfirm(InventoryClickEvent event) {
         // Remove the profile from the player's profiles map and config
+        if (playerData.isActive(profile.getIndex()) && playerData.getProfiles().size() == 1){
+            close(InventoryCloseEvent.Reason.CANT_USE);
+            player.sendMessage("You cannot remove your final profile!");
+            event.setCancelled(true);
+        }
         playerData.removeProfile(profile);
 
         // Reopen the ProfilesMenu to update the GUI
-        playerData.getPlayer().closeInventory();
-        new ProfilesMenu(RPGProfiles.getInstance(), playerData);
+        close(InventoryCloseEvent.Reason.PLUGIN);
+        new ProfilesMenu(RPGProfiles.getInstance(), playerData).open();
 
     }
 
     @Override
     protected void onCancel(InventoryClickEvent event) {
         // Close the menu and do nothing
-        playerData.getPlayer().closeInventory();
+        if (profilesMenu == null){
+            close(InventoryCloseEvent.Reason.CANT_USE);
+            return;
+        }
+        else {
+            close(InventoryCloseEvent.Reason.PLUGIN);
+            profilesMenu.open();
+        }
     }
 
     @Override

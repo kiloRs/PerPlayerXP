@@ -1,5 +1,8 @@
 package com.profilesplus;
 
+import io.lumine.mythic.lib.MythicLib;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -13,7 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 
 public class SpectatorManager {
-    private static final Set<UUID> spectatorWaitingModePlayers = new HashSet<>();
+    private final Set<UUID> spectatorWaitingModePlayers = new HashSet<>();
     private final RPGProfiles plugin;
 
     public SpectatorManager(RPGProfiles plugin){
@@ -55,5 +58,26 @@ public class SpectatorManager {
         double yaw = plugin.getConfig().getDouble("spectator-location.yaw",0f);
 
         return new Location(world, x, y, z, ((float) yaw), ((float) pitch));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+
+        if (!(o instanceof SpectatorManager that)) return false;
+
+        return new EqualsBuilder().append(plugin, that.plugin).append(spectatorWaitingModePlayers,that.spectatorWaitingModePlayers).isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder(17, 37).append(plugin).toHashCode();
+    }
+
+    public void warn(Player player) {
+        player.sendMessage(MythicLib.plugin.parseColors("&cYou must first create a profile before you can play!"));
+        if (!player.getLocation().toBlockLocation().equals(getSpectatorLocation().toBlockLocation())) {
+            player.teleport(getSpectatorLocation(), PlayerTeleportEvent.TeleportCause.PLUGIN);
+        }
     }
 }

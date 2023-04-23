@@ -4,6 +4,7 @@ import com.profilesplus.RPGProfiles;
 import com.profilesplus.events.TextInputEvent;
 import com.profilesplus.menu.ProfileCreateMenu;
 import com.profilesplus.players.PlayerData;
+import io.lumine.mythic.lib.MythicLib;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import lombok.Getter;
 import org.bukkit.Bukkit;
@@ -12,6 +13,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.scheduler.BukkitRunnable;
+
 @Getter
 public class NameInput implements Listener {
     private final Player player;
@@ -33,10 +36,33 @@ public class NameInput implements Listener {
 
                 if (!isValidName(input)) {
                     player.sendMessage(ChatColor.RED + "Profile name too long. Maximum length is 16 characters.");
+                    return;
                 } else {
-                    Bukkit.getPluginManager().callEvent(new TextInputEvent(player,input));
-                    RPGProfiles.log("Text Input to Selection of Name: " + input);
+                    new BukkitRunnable(){
+                        @Override
+                        public void run() {
+                            TextInputEvent event = new TextInputEvent(player, input);
+                            Bukkit.getPluginManager().callEvent(event);
+
+                            if (event.isCancelled()){
+                                previousMenu.open();
+                                event.getPlayer().removeMetadata("textInput",RPGProfiles.getInstance());
+                                event.getPlayer().sendMessage(MythicLib.plugin.parseColors("&ePlease use another name! Not allowing: " + input.toUpperCase()));
+                                AsyncChatEvent.getHandlerList().unregister(NameInput.this);
+                                return;
+                            }
+                            previousMenu.setProfileName(input);
+                            previousMenu.open();
+                            event.getPlayer().removeMetadata("textInput",RPGProfiles.getInstance());
+
+
+                        }
+                    }.runTask(RPGProfiles.getInstance());
                 }
+            }
+            else {
+                event.getPlayer().sendMessage(MythicLib.plugin.parseColors("&eYou must enter a name of the profile, or type cancel!"));
+                return;
             }
             AsyncChatEvent.getHandlerList().unregister(this);
         }
@@ -47,30 +73,23 @@ public class NameInput implements Listener {
         if (event.getPlayer().getUniqueId().equals(player.getUniqueId()) && event.getPlayer().hasMetadata("textInput")) {
             String input = event.getInput().toLowerCase();
 
-            if (input.equals("close") || input.equals("cancel")) {
-                // Return to the ProfileCreateMenu
-                previousMenu.open();
-            } else if (isValidName(input)) {
-                // Process the name input here
-                previousMenu.setProfileName(input);
-                previousMenu.open();
-            } else {
+            if (!isValidName(input) || input.equalsIgnoreCase("close") || input.equalsIgnoreCase("cancel") || input.equalsIgnoreCase("back")){
                 event.setCancelled(true);
-                player.sendMessage(ChatColor.RED + "Invalid profile name. Please try again.");
             }
-
             // Unregister the listener when the input is processed or cancelled
             TextInputEvent.getHandlerList().unregister(this);
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.LOWEST,ignoreCancelled = false)
     public void onText(TextInputEvent e){
         if (e.isCancelled()){
             previousMenu.setProfileName(null);
             previousMenu.open();
             return;
         }
+        previousMenu.setProfileName(e.getInput());
+        previousMenu.open();
         RPGProfiles.log("Name: " + e.getInput().toUpperCase());
     }
 

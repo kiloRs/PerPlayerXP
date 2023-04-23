@@ -1,18 +1,9 @@
 forbiddenNames:
-  - cunt
   - ass
-  - fuck
-  - asshole
-  - porno
-  - sex
-  - sexy
-  - ballsack
-  - shit
-  - shitty
 debug: true
 minsToSave: 10
 item-ownership:
- enable: false
+ enable: true
  duration: 60 #Measured in seconds!
 
 spectator-location:
@@ -26,9 +17,9 @@ spectator-location:
  #Icons for use (Customizable)
 icons:
   name:
-    material: "PAPER"
+    material: "NAME_TAG"
     customModel: 0
-    name: "Set Name"
+    name: "&l&3Set Name"
     lore:
       - "Assign the name of the Profile!"
   class:

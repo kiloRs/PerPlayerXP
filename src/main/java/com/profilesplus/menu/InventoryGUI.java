@@ -33,24 +33,33 @@ public abstract class InventoryGUI implements InventoryHolder {
         new BukkitRunnable(){
             @Override
             public void run() {
-                player.openInventory(inventory);
+                player.openInventory(InventoryGUI.this.inventory);
             }
-        }.runTaskLater(RPGProfiles.getInstance(),1);
+        }.runTask(RPGProfiles.getInstance());
     }
+
 
     public void setItem(int slot, ItemStack item, Consumer<InventoryClickEvent> onClick) {
         inventory.setItem(slot, item);
-        actions.put(slot, onClick);
+        actions.put(slot, onClick.andThen(inventoryClickEvent -> inventoryClickEvent.setCancelled(true)));
     }
 
     public void processClickEvent(InventoryClickEvent event) {
         // Process the click event based on the actions map
-        event.setCancelled(true);
+//        event.setCancelled(true);
         int clickedSlot = event.getRawSlot();
         if (actions.containsKey(clickedSlot)) {
             actions.get(clickedSlot).accept(event);
         }
     }
 
+    public void close(InventoryCloseEvent.Reason reason){
+        if (inventory.getViewers().contains(player)) {
+            player.closeInventory(reason);
+        }
+    }
+    public void close(){
+        close(InventoryCloseEvent.Reason.PLUGIN);
+    }
     public abstract void handleCloseEvent(InventoryCloseEvent event);
 }

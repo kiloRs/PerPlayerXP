@@ -93,24 +93,20 @@ public class Profile {
     }
 
     public boolean update() {
+        if (!(internalPlayer.isActive(index))){
+            RPGProfiles.log("Active not found for " + index + " of " + internalPlayer.getPlayer().getName());
+            return false;
+        }
         // Save the current active profile if it exists
-        PlayerData playerData = PlayerData.get(internalPlayer.getUuid());
-
-
         new BukkitRunnable(){
             @Override
             public void run() {
-
-                if (!isFresh()) {
-                    saveToConfigurationSection(true, true);
-                }
                 updateMMOCore();
                 if (lastKnownLocation != null) {
                     internalPlayer.getPlayer().teleport(lastKnownLocation, PlayerTeleportEvent.TeleportCause.PLUGIN);
                 }
                 // Set the player's balance to the last saved balance of the active profile
 
-                internalPlayer.getConfig().set("active",id.toUpperCase());
                 internalPlayer.saveConfig();
 
                 loadInventory();
