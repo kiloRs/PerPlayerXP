@@ -7,6 +7,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -21,7 +23,21 @@ public class PlayerDataListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST,ignoreCancelled = true)
     public void onPlayerJoin(AsyncPlayerDataLoadEvent event) {
-        PlayerData.get(event.getPlayer()).loadProfiles();
+        PlayerData playerData = PlayerData.get(event.getPlayer());
+
+
+        if (playerData.getProfileMap().isEmpty()){
+            playerData.loadProfiles();
+        }
+
+        PersistentDataContainer container = playerData.getPlayer().getPersistentDataContainer();
+        if (container.has(PlayerData.getACTIVE_PROFILE_KEY(), PersistentDataType.INTEGER)){
+            Integer integer = container.get(PlayerData.getACTIVE_PROFILE_KEY(), PersistentDataType.INTEGER);
+            if (integer >0){
+                playerData.loadProfile(integer);
+                playerData.setActiveProfile(integer);
+            }
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST,ignoreCancelled = true)

@@ -45,17 +45,23 @@ public class Profile {
     private final int index;
     private boolean fresh = true;
 
-    public Profile(String id, String className,int slotNumber, UUID player){
+    public Profile(String id, String className, int slot, UUID num){
+        this(id,className,slot,num,false);
+    }
+    public Profile(String id, String className,int slotNumber, UUID player, boolean fromFile){
         this.id = id;
         this.index = slotNumber;
         this.className = className;
         this.mmoCorePlayer = net.Indyuce.mmocore.api.player.PlayerData.get(player);
         this.internalPlayer = PlayerData.get(player);
         this.section = internalPlayer.getConfig().getConfigurationSection("profiles." + this.index);
-        if (this.section == null){
-            this.section.createSection("profiles." + index);
+        if (this.section == null || !fromFile){
+            this.section = internalPlayer.getConfig().createSection("profiles." + index);
+            this.classInformation = new SavedClassInformation(mmoCorePlayer);
         }
-        this.classInformation = new SavedClassInformation(section.isConfigurationSection(className)?section.getConfigurationSection(className):section.createSection(className));
+        else {
+            this.classInformation = new SavedClassInformation(section.isConfigurationSection(className) ? section.getConfigurationSection(className) : section.createSection(className));
+        }
         this.creationTime = section.isLong("creation-time")?section.getLong("creation-time",System.currentTimeMillis()):System.currentTimeMillis();
         assignName();
 
@@ -78,13 +84,6 @@ public class Profile {
     public Profile(String id, String className, int slot, Player player) {
         this(id,className,slot,player.getUniqueId());
     }
-
-    public void notFresh() {
-        this.fresh = false;
-        this.section.set("fresh", false);
-        this.internalPlayer.saveConfig();
-    }
-
     private void assignName() {
         String name = StringUtils.capitalize(id);
         internalPlayer.getPlayer().displayName(Component.text(name));
@@ -138,7 +137,13 @@ public class Profile {
         for (SkillTree skillTree : MMOCore.plugin.skillTreeManager.getAll()) {
             mmoCorePlayer.setSkillTreePoints(skillTree.getId(),classInformation.getSkillTreePoints(skillTree.getId()));
             for (SkillTreeNode node : skillTree.getNodes()) {
-                mmoCorePlayer.setNodeLevel(node,classInformation.getNodeLevel(node.getId()));
+                if (classInformation.getNodeLevels().containsKey(node.getId())) {
+                    if (classInformation.getNodeLevels().get(node.getId()) != null)
+                        mmoCorePlayer.setNodeLevel(node, classInformation.getNodeLevel(node.getId()));
+                    else
+                        mmoCorePlayer.setNodeLevel(node,0);
+
+                }
             }
         }
         for (RegisteredSkill registeredSkill : MMOCore.plugin.skillManager.getAll()) {

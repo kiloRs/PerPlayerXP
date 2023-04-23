@@ -73,11 +73,13 @@ public class NameInput implements Listener {
         if (event.getPlayer().getUniqueId().equals(player.getUniqueId()) && event.getPlayer().hasMetadata("textInput")) {
             String input = event.getInput().toLowerCase();
 
+            if (RPGProfiles.isLogging()){
+                RPGProfiles.log("Text Input Event: " + event.getInput().toUpperCase());
+            }
             if (!isValidName(input) || input.equalsIgnoreCase("close") || input.equalsIgnoreCase("cancel") || input.equalsIgnoreCase("back")){
                 event.setCancelled(true);
+                RPGProfiles.log("Text Input Event Cancelled");
             }
-            // Unregister the listener when the input is processed or cancelled
-            TextInputEvent.getHandlerList().unregister(this);
         }
     }
 
@@ -86,18 +88,18 @@ public class NameInput implements Listener {
         if (e.isCancelled()){
             previousMenu.setProfileName(null);
             previousMenu.open();
+            TextInputEvent.getHandlerList().unregister(this);
             return;
+        }
+        if (e.getInput().equalsIgnoreCase("cancel")){
+            previousMenu.open();
         }
         previousMenu.setProfileName(e.getInput());
         previousMenu.open();
-        RPGProfiles.log("Name: " + e.getInput().toUpperCase());
+        TextInputEvent.getHandlerList().unregister(this);
     }
 
     private boolean isValidName(String name) {
-        if (name.length() > 16 || !name.matches("^[a-zA-Z0-9]+$")) {
-            return false;
-        }
-
-        return !previousMenu.isForbiddenName(name);
+        return RPGProfiles.getNameConfigManager().canUse(player,name);
     }
 }

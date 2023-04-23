@@ -23,6 +23,7 @@ import java.util.Map;
 public class ClassSelectionMenu extends ConfirmCancelMenu {
     private final ProfileCreateMenu createMenu;
     private String selectedClassType;
+    private static final String PERMISSION_PREFIX = "RPGProfiles.class.";
 
     public ClassSelectionMenu(Player player, ProfileCreateMenu createMenu) {
         super(player, createMenu.plugin, MythicLib.plugin.parseColors("&aSelect Class Type"), calculateInventorySize());
@@ -30,6 +31,10 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
         Map<String, ItemStack> classIcons = new HashMap<>();
 
         for (PlayerClass aClass : MMOCore.plugin.classManager.getAll()) {
+            if (!player.hasPermission(PERMISSION_PREFIX + aClass.getId().toLowerCase())){
+                RPGProfiles.log("No Permission for: " + aClass.getId() + " on " + player.getName());
+                continue;
+            }
             if (RPGProfiles.getIcons(player).hasClassIcon(aClass.getId())) {
                 RPGProfiles.log("Class Selection Loading: " + aClass.getId());
                 classIcons.put(aClass.getId(), RPGProfiles.getIcons(player).getClassIcon(aClass.getId()));
@@ -87,8 +92,7 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
     protected void onConfirm(InventoryClickEvent event) {
         // Set the class type in the ProfileCreateMenu
 
-
-        createMenu.setClassType(selectedClassType);
+        createMenu.setClassType(selectedClassType.toUpperCase());
 
         //Include a way to update the lore of the items here!
         //todo Fix this so the display of the lore input works!
@@ -143,15 +147,23 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
         int numRows = numClasses > 9 ? 3 : 2;
         return (numRows + 1) * 9 ;
     }
-
     private static int[] generateSlots(int numClasses) {
-        int[] secondRowSlots = {9, 10, 11, 12, 13, 14, 15, 16, 17};
-        int[] thirdRowSlots = {18, 19, 20, 21, 22, 23, 24, 25, 26};
+        int[] centerRowSlots = {3, 4, 5, 12, 13, 14, 21, 22, 23};
 
         int[] slots = new int[numClasses];
-        System.arraycopy(secondRowSlots, 0, slots, 0, Math.min(numClasses, secondRowSlots.length));
-        if (numClasses > secondRowSlots.length) {
-            System.arraycopy(thirdRowSlots, 0, slots, secondRowSlots.length, numClasses - secondRowSlots.length);
+        System.arraycopy(centerRowSlots, 0, slots, 0, Math.min(numClasses, centerRowSlots.length));
+        if (numClasses > centerRowSlots.length) {
+            // distribute remaining slots equally on the top and bottom rows
+            int remaining = numClasses - centerRowSlots.length;
+            int topRowStart = (9 - remaining) / 2;
+            int bottomRowStart = 18 + topRowStart;
+            for (int i = centerRowSlots.length; i < numClasses; i++) {
+                if (i % 2 == 0) {
+                    slots[i] = topRowStart + (i - centerRowSlots.length) / 2;
+                } else {
+                    slots[i] = bottomRowStart + (i - centerRowSlots.length) / 2;
+                }
+            }
         }
 
         return slots;

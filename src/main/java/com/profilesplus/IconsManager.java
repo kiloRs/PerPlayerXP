@@ -1,10 +1,11 @@
 package com.profilesplus;
 
-import io.lumine.mythic.bukkit.utils.lib.lang3.StringUtils;
 import io.lumine.mythic.lib.MythicLib;
 import io.lumine.mythic.lib.api.explorer.ItemBuilder;
 import lombok.Getter;
 import me.clip.placeholderapi.PlaceholderAPI;
+import net.Indyuce.mmocore.MMOCore;
+import net.Indyuce.mmocore.api.player.profess.PlayerClass;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Material;
@@ -59,10 +60,11 @@ public class IconsManager {
         if (matched == null) {
             matched = Material.PAPER;
         }
-        ItemBuilder builder = new ItemBuilder(matched, StringUtils.capitalize(className));
+        PlayerClass orThrow = MMOCore.plugin.classManager.getOrThrow(className);
+        ItemBuilder builder = new ItemBuilder(matched, MythicLib.plugin.parseColors("&e" + orThrow.getName()));
         builder.editMeta(itemMeta -> itemMeta.setCustomModelData(m));
         List<String> finalLore = lore.stream()
-                .map(line -> PlaceholderAPI.setPlaceholders(player, line))
+                .map(line -> PlaceholderAPI.setPlaceholders(player, MythicLib.plugin.parseColors(line)))
                 .collect(Collectors.toList());
 
         if (!finalLore.isEmpty()) {

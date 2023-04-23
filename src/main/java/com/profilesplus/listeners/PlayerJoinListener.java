@@ -33,6 +33,7 @@ public class PlayerJoinListener implements Listener {
     @EventHandler(priority = EventPriority.LOW)
     public void onJoin(PlayerJoinEvent e){
         Player player = e.getPlayer();
+
         SpectatorManager manager = ((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager();
 
         manager.setWaiting(player);
@@ -48,12 +49,12 @@ public class PlayerJoinListener implements Listener {
             profilesMenu.open();
         }
         else {
-            activeProfile.update();
-            event.getPlayer().sendMessage(MythicLib.plugin.parseColors("&aYour profile was loaded!"));
+            if (activeProfile.update()) {
+                event.getPlayer().sendMessage(MythicLib.plugin.parseColors("&aYour profile was loaded!"));
 
-            RPGProfiles.log("Activation of Profile: " + activeProfile.getId() + " : " + activeProfile.getIndex());
-            return;
-
+                RPGProfiles.log("Activation of Profile: " + activeProfile.getId() + " : " + activeProfile.getIndex());
+                return;
+            }
 
         }
     }

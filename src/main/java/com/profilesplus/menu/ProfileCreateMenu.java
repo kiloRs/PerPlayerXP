@@ -81,21 +81,21 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
         setClassTypeSlot = 12;
         setItem(setClassTypeSlot, RPGProfiles.getIcons(getPlayerData().getPlayer()).getClassName(), event -> {
             ClassSelectionMenu classSelectionMenu = new ClassSelectionMenu(playerData.getPlayer(), this);
-            getPlayerData().getPlayer().closeInventory(InventoryCloseEvent.Reason.PLUGIN);
+            close(InventoryCloseEvent.Reason.PLUGIN);
             classSelectionMenu.open();
         });
 
         // Set the "Set Name" slot and add the click listener
         setNameSlot = 14;
         setItem(setNameSlot, RPGProfiles.getIcons(getPlayerData().getPlayer()).getName(), event -> {
-            playerData.getPlayer().closeInventory(InventoryCloseEvent.Reason.PLUGIN);
+            close(InventoryCloseEvent.Reason.DISCONNECT);
             playerData.getPlayer().sendMessage(MythicLib.plugin.parseColors("Please type the profile name in chat."));
 
             playerData.getPlayer().setMetadata("textInput",new FixedMetadataValue(RPGProfiles.getInstance(),true));
             // Register the NameInput listener
+            input = true;
             NameInput nameInput = new NameInput( this);
             Bukkit.getPluginManager().registerEvents(nameInput, plugin);
-            input = true;
         });
         forbiddenNamePattern = createForbiddenNamePattern();
     }
@@ -132,6 +132,7 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
 
     @Override
     protected String successfulConfirmMessage() {
+
         return "You have successfully created a " + className.toUpperCase() + " profile named " + profileName.toUpperCase();
     }
 
@@ -152,23 +153,26 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
         }
         className = null;
         profileName = null;
-        playerData.getPlayer().closeInventory(InventoryCloseEvent.Reason.PLUGIN);
+        close(InventoryCloseEvent.Reason.UNKNOWN);
     }
 
     @Override
     protected void onCancel(InventoryClickEvent event) {
         if (!fromProfiles){
-            playerData.getPlayer().closeInventory(InventoryCloseEvent.Reason.PLUGIN);
+            close(InventoryCloseEvent.Reason.UNKNOWN);
             return;
         }
-        ProfilesMenu profilesMenu = new ProfilesMenu(plugin, playerData);
+        if (profilesMenu == null){
+            close(InventoryCloseEvent.Reason.PLUGIN);
+            return;
+        }
         profilesMenu.open();
     }
 
     @Override
     public List<String> confirmLore() {
         List<String> lore = new ArrayList<>();
-        if (profileName != null && !profileName.isEmpty()) {
+        if (profileName != null && !profileName.isEmpty() && !profileName.equalsIgnoreCase("cancel") && !profileName.equalsIgnoreCase("close") && !isForbiddenName(profileName)) {
             lore.add(ChatColor.GREEN + "Name: " + profileName);
         } else {
             lore.add(ChatColor.RED + "Name: Not Set");
@@ -195,7 +199,12 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
                 if (createMenu.input){
                     return;
                 }
-                createMenu.profilesMenu.open();
+                if (event.getReason()== InventoryCloseEvent.Reason.DISCONNECT || event.getReason() != InventoryCloseEvent.Reason.PLUGIN){
+                    return;
+                }
+                if (fromProfiles) {
+                    createMenu.profilesMenu.open();
+                }
             }
         }
     }

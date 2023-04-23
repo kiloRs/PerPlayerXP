@@ -4,6 +4,7 @@ import com.profilesplus.commands.DeleteProfilesCommand;
 import com.profilesplus.commands.ProfileCreateCommand;
 import com.profilesplus.commands.ProfilesCommand;
 import com.profilesplus.listeners.*;
+import com.profilesplus.listeners.text.NameConfigManager;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.saving.InventoryDatabase;
 import lombok.Getter;
@@ -24,6 +25,7 @@ import java.util.logging.Logger;
 public final class RPGProfiles extends JavaPlugin {
     @Getter
     private static Plugin instance;
+    private static NameConfigManager nameConfigManager;
     private SpectatorManager spectatorManager;
     private Economy economy;
     @Getter
@@ -43,15 +45,23 @@ public final class RPGProfiles extends JavaPlugin {
 
     }
 
+    public static NameConfigManager getNameConfigManager() {
+        return nameConfigManager;
+    }
+
     @Override
     public void onEnable() {
         instance = this;
         spectatorManager = new SpectatorManager(this);
         inventoryDatabase = new InventoryDatabase("inventories.db");
+
         saveDefaultConfig();
+
+        nameConfigManager = new NameConfigManager(this);
 
         registerListeners();
         register();
+
 
         if (!setupEconomy()){
             log("Requires Vault Plugin!");
