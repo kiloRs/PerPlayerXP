@@ -1,0 +1,50 @@
+#Do not change this top 'Default', but you can put more below, base on permission 'RPGProfiles.Default.Default' is the top one. Replace the last name for each key.
+DEFAULT:
+  level: 1
+  experience: 1.0
+  skill-points: 0
+  attribute-points: 0
+  attribute-realloc-points: 0
+  skill-reallocation-points: 0
+  skill-tree-reallocation-points: 0
+  health: 18.0
+  mana: 20.0
+  stamina: 20.0
+  stellium: 20.0
+  attribute:
+    dexterity: 0
+    strength: 0
+    intelligence: 0
+  location:
+    world: world
+    x: -3.5
+    y: 81.0
+    z: 27.5
+    yaw: 6.727048
+    pitch: -6.5100465
+  balance: 0.0
+TEN:
+  level: 10
+  experience: 0
+  skill-points: 10
+  attribute-points: 10
+  attribute-realloc-points: 10
+  skill-reallocation-points: 10
+  skill-tree-reallocation-points: 10
+  health: 10.0
+  mana: 10.0
+  stamina: 10.0
+  stellium: 10.0
+  attribute:
+    dexterity:
+    strength: 0
+    intelligence: 0
+  location:
+    world: world
+    x: 10
+    y: 77.0
+    z: 10
+    yaw: 5
+    pitch: -5
+  balance: 10.0
+

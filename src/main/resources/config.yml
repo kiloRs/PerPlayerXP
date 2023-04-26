@@ -1,26 +1,32 @@
 profile:
-  name:
+  naming:
     minLength: 3
     maxLength: 16
     lettersOnly: true
     forbidden:
-      - 'swearword1'
-      - 'swearword2'
-      - 'swearword3'
-
+      - 'fuck'
+      - 'sex'
+      - 'porn'
+  create:
+    commands:
+      - give %player_name% STONE 1000
 debug: true
 minsToSave: 10
 item-ownership:
  enable: true
  duration: 60 #Measured in seconds!
 
-spectator-location:
-  world: "world"
-  x: 0.0
-  y: 100.0
-  z: 0.0
-  pitch: 1
-  yaw: 1
+limbo:
+  warning:
+    enabled: true
+  location:
+    world: "world"
+    x: 0.0
+    y: 100.0
+    z: 0.0
+    pitch: 1
+    yaw: 1
+
 
  #Icons for use (Customizable)
 icons:
@@ -72,35 +78,35 @@ icons:
     name: "Confirm"
     lore:
       - "Please select a class type before confirming."
-
+  classes:
 #Note: Class names must match exact case! Its best to leave them as capital letters only!
-  WARRIOR:
-    material: "IRON_SWORD"
-    customModel: 0
-    name: "Warrior"
-    lore:
-      - "A fierce warrior that excels in melee combat"
-  MAGE:
-    material: "BLAZE_ROD"
-    customModel: 0
-    name: "Mage"
-    lore:
-      - "A powerful mage that wields arcane magic"
-  MARKSMAN:
-    material: "BOW"
-    customModel: 0
-    name: "Archer"
-    lore:
-      - "A skilled archer that rains arrows upon enemies"
-  ROGUE:
-    material: "IRON_AXE"
-    customModel: 0
-    name: "Rogue"
-    lore:
-      - "A silent killer."
-  PALADIN:
-    material: "DIAMOND_SWORD"
-    customModel: 0
-    name: "Paladin"
-    lore:
-      - "A holy killer."
+    WARRIOR:
+      material: "IRON_SWORD"
+      customModel: 0
+      name: "Warrior"
+      lore:
+        - "A fierce warrior that excels in melee combat"
+    MAGE:
+      material: "BLAZE_ROD"
+      customModel: 0
+      name: "Mage"
+      lore:
+        - "A powerful mage that wields arcane magic"
+    MARKSMAN:
+      material: "BOW"
+      customModel: 0
+      name: "Archer"
+      lore:
+        - "A skilled archer that rains arrows upon enemies"
+    ROGUE:
+      material: "IRON_AXE"
+      customModel: 0
+      name: "Rogue"
+      lore:
+        - "A silent killer."
+    PALADIN:
+      material: "DIAMOND_SWORD"
+      customModel: 0
+      name: "Paladin"
+      lore:
+        - "A holy killer."

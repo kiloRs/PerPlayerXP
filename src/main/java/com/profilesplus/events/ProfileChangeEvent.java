@@ -24,6 +24,7 @@ public class ProfileChangeEvent extends Event implements Cancellable {
     private Profile newProfile;
     @Setter
     private boolean cancelled;
+    private String settings;
 
     public ProfileChangeEvent(PlayerData player,@Nullable Profile oldProfile, Profile newProfile) {
         this.player = player.getPlayer();
@@ -31,7 +32,16 @@ public class ProfileChangeEvent extends Event implements Cancellable {
         this.oldProfile = oldProfile;
         this.newProfile = newProfile;
         this.cancelled = false;
+        this.settings = null;
     }
+
+    public ProfileChangeEvent(PlayerData player, Profile oldProfile, Profile newProfile, String isNew) {
+        this.player = player.getPlayer();
+        this.playerData = player;
+        this.oldProfile = oldProfile;
+        this.newProfile = newProfile;
+        this.settings = isNew;
+        this.cancelled = false;    }
 
     public Player getPlayer() {
         return player;
@@ -50,5 +60,9 @@ public class ProfileChangeEvent extends Event implements Cancellable {
     @NotNull
     public static HandlerList getHandlerList() {
         return handlers;
+    }
+
+    public String getSettings() {
+        return settings;
     }
 }

@@ -1,14 +1,17 @@
 package com.profilesplus.listeners;
 
 import com.profilesplus.RPGProfiles;
+import com.profilesplus.menu.CharSelectionMenu;
 import com.profilesplus.players.PlayerData;
-import net.Indyuce.mmocore.api.event.AsyncPlayerDataLoadEvent;
+import net.Indyuce.mmocore.api.event.PlayerDataLoadEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -22,27 +25,56 @@ public class PlayerDataListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGHEST,ignoreCancelled = true)
-    public void onPlayerJoin(AsyncPlayerDataLoadEvent event) {
+    public void onPlayerJoin(PlayerJoinEvent event) {
         PlayerData playerData = PlayerData.get(event.getPlayer());
 
+        if (playerData.getConfig().getKeys(false).isEmpty()) {
+            RPGProfiles.log("&cNo player information for " + event.getPlayer().getName() + "'s configuration!");
 
-        if (playerData.getProfileMap().isEmpty()){
-            playerData.loadProfiles();
+            new CharSelectionMenu(playerData).open();
+            return;
         }
 
-        PersistentDataContainer container = playerData.getPlayer().getPersistentDataContainer();
-        if (container.has(PlayerData.getACTIVE_PROFILE_KEY(), PersistentDataType.INTEGER)){
-            Integer integer = container.get(PlayerData.getACTIVE_PROFILE_KEY(), PersistentDataType.INTEGER);
-            if (integer >0){
-                playerData.loadProfile(integer);
-                playerData.setActiveProfile(integer);
-            }
-        }
+        playerData.loadProfiles();
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST,ignoreCancelled = true)
+    @EventHandler
+    public void onRPG(PlayerDataLoadEvent event){
+        PlayerData playerData = PlayerData.get(event.getPlayer());
+        CharSelectionMenu menu = new CharSelectionMenu(playerData);
+
+        if (!playerData.hasActiveKey() || playerData.getProfileMap().isEmpty() || playerData.getActiveProfile() == null){
+            menu.open();
+        }
+    }
+    @EventHandler(priority = EventPriority.LOW,ignoreCancelled = true)
     public void onPlayerQuit(PlayerQuitEvent event) {
         PlayerData playerData = PlayerData.get(event.getPlayer());
+
+        if (!playerData.getProfileMap().isEmpty()) {
+            playerData.saveProfiles();
+        }
+        else {
+            RPGProfiles.log("No Profiles to Save for Player (" + event.getPlayer().getName() + ")");
+        }
+
+    }
+    @EventHandler
+    public void on(PlayerTeleportEvent teleportEvent){
+        PlayerData playerData = PlayerData.get(teleportEvent.getPlayer());
+
+        playerData.saveProfiles();
+    }
+    @EventHandler
+    public void onRespawn(PlayerRespawnEvent event){
+        PlayerData playerData = PlayerData.get(event.getPlayer());
+
+        playerData.saveProfiles();
+    }
+    @EventHandler
+    public void death(PlayerDeathEvent event){
+        PlayerData playerData = PlayerData.get(event.getPlayer());
+
         playerData.saveProfiles();
     }
 

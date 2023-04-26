@@ -2,16 +2,9 @@ package com.profilesplus.listeners;
 
 
 import com.profilesplus.RPGProfiles;
-import com.profilesplus.SpectatorManager;
-import com.profilesplus.events.ProfileCreateEvent;
-import com.profilesplus.menu.ProfilesMenu;
+import com.profilesplus.LimboManager;
 import com.profilesplus.players.PlayerData;
-import com.profilesplus.players.Profile;
-import io.lumine.mythic.lib.MythicLib;
-import net.Indyuce.mmocore.MMOCore;
-import net.Indyuce.mmocore.api.event.AsyncPlayerDataLoadEvent;
-import net.Indyuce.mmocore.api.player.profess.PlayerClass;
-import org.bukkit.ChatColor;
+import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -20,8 +13,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.List;
-
+@Getter
 public class PlayerJoinListener implements Listener {
     private final JavaPlugin plugin;
 
@@ -30,66 +22,35 @@ public class PlayerJoinListener implements Listener {
     }
 
 
-    @EventHandler(priority = EventPriority.LOW)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(PlayerJoinEvent e){
         Player player = e.getPlayer();
 
-        SpectatorManager manager = ((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager();
+        PlayerData playerData = PlayerData.get(player);
+        LimboManager manager = RPGProfiles.getLimboManager();
 
-        manager.setWaiting(player);
-    }
-    @EventHandler(priority = EventPriority.LOW)
-    public void onPlayerJoin(AsyncPlayerDataLoadEvent event) {
-        PlayerData playerData = PlayerData.get(event.getPlayer());
-        Profile activeProfile = playerData.getActiveProfile();
-
-        if (activeProfile == null || playerData.getProfiles().isEmpty()){
-            playerData.getPlayer().sendMessage(MythicLib.plugin.parseColors("&cYou currently have no profiles!"));
-            ProfilesMenu profilesMenu = new ProfilesMenu(RPGProfiles.getInstance(), playerData);
-            profilesMenu.open();
+        if (playerData.getActiveProfile() != null){
+            if (playerData.getActiveProfile().update()) {
+                RPGProfiles.log("Active Profile Loading Complete! " + playerData.getActiveSlot());
+            }
+            if (manager.isWaiting(player)) {
+                manager.removeWaiting(player);
+            }
         }
         else {
-            if (activeProfile.update()) {
-                event.getPlayer().sendMessage(MythicLib.plugin.parseColors("&aYour profile was loaded!"));
-
-                RPGProfiles.log("Activation of Profile: " + activeProfile.getId() + " : " + activeProfile.getIndex());
-                return;
+            RPGProfiles.log("Player is waiting...");
+            Location startingLocation = player.getLocation();
+            if (player.getLocation().toBlockLocation().equals(getSpectatorLocation().toBlockLocation())) {
+                manager.setWaiting(player, startingLocation = player.getLocation().getWorld().getSpawnLocation());
             }
-
-        }
-    }
-
-
-    @EventHandler(priority = EventPriority.LOWEST,ignoreCancelled = true)
-    public void onProfileCreate(ProfileCreateEvent event) {
-        Player player = event.getPlayer();
-        String profileName = event.getProfile().getName();
-        String profileClass = event.getProfile().getClassName();
-        int activeSlot = event.getProfile().getIndex();
-        int bukkitSlot = ProfilesMenu.profileSlotToInventorySlot(activeSlot)>=0?ProfilesMenu.profileSlotToInventorySlot(activeSlot):-1;
-
-        if (RPGProfiles.isLogging()){
-            RPGProfiles.log("Profile Being Created - " + activeSlot + " " + profileName + " " + profileClass.toUpperCase() + " on slot " + bukkitSlot);
-        }
-        // Perform your own actions or checks here
-
-        PlayerClass aClass = MMOCore.plugin.classManager.get(profileClass);
-        if (aClass == null){
-            event.setCancelled(true);
-            player.sendMessage("Invalid class name!");
-            return;
-        }
-        // Example: Cancel the event if the profile name is in the list of forbidden names
-        List<String> forbiddenNames = ((RPGProfiles) RPGProfiles.getInstance()).getForbiddenNames();
-        for (String forbiddenName : forbiddenNames) {
-            if (profileName.equalsIgnoreCase(forbiddenName)) {
-                event.setCancelled(true);
-                player.sendMessage(ChatColor.RED + "You cannot use '" + forbiddenName + "' in your profile name.");
-                break;
+            else {
+                manager.setWaiting(player,startingLocation);
             }
         }
     }
+
+
     public static Location getSpectatorLocation() {
-        return ((RPGProfiles) RPGProfiles.getInstance()).getSpectatorManager().getSpectatorLocation();
+        return RPGProfiles.getLimboManager().getSpectatorLocation();
     }
 }

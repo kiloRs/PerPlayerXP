@@ -5,7 +5,12 @@ import io.lumine.mythic.lib.MythicLib;
 import lombok.Getter;
 import net.Indyuce.mmocore.MMOCore;
 import net.Indyuce.mmocore.api.player.profess.PlayerClass;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -21,26 +26,27 @@ import java.util.Map;
 
 @Getter
 public class ClassSelectionMenu extends ConfirmCancelMenu {
-    private final ProfileCreateMenu createMenu;
     private String selectedClassType;
     private static final String PERMISSION_PREFIX = "RPGProfiles.class.";
-
-    public ClassSelectionMenu(Player player, ProfileCreateMenu createMenu) {
-        super(player, createMenu.plugin, MythicLib.plugin.parseColors("&aSelect Class Type"), calculateInventorySize());
-        this.createMenu = createMenu;
+    public ClassSelectionMenu(@NotNull Player player, @NotNull ProfileCreateMenu createMenu){
+        this(player,createMenu,null);
+    }
+    public ClassSelectionMenu(@NotNull Player player,@NotNull ProfileCreateMenu createMenu, HumanEntity externalView) {
+        super(player, MythicLib.plugin.parseColors("&aSelect Class Type"), calculateInventorySize(),"CLASS_SELECTION",externalView);
+        setPreviousMenu(createMenu);
         Map<String, ItemStack> classIcons = new HashMap<>();
 
         for (PlayerClass aClass : MMOCore.plugin.classManager.getAll()) {
-            if (!player.hasPermission(PERMISSION_PREFIX + aClass.getId().toLowerCase())){
+            if (!player.hasPermission(PERMISSION_PREFIX + aClass.getId().toUpperCase())){
                 RPGProfiles.log("No Permission for: " + aClass.getId() + " on " + player.getName());
                 continue;
             }
             if (RPGProfiles.getIcons(player).hasClassIcon(aClass.getId())) {
-                RPGProfiles.log("Class Selection Loading: " + aClass.getId());
-                classIcons.put(aClass.getId(), RPGProfiles.getIcons(player).getClassIcon(aClass.getId()));
+                RPGProfiles.log("Class Selection Loading: " + aClass.getId().toUpperCase());
+                classIcons.put(aClass.getId().toUpperCase(), RPGProfiles.getIcons(player).getClassIcon(aClass.getId()));
                 continue;
             }
-            RPGProfiles.log("SKipping class: " + aClass.getId());
+            RPGProfiles.log("SKipping class: " + aClass.getId().toUpperCase());
 
         }
 
@@ -58,15 +64,15 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
             String classType = classIconEntry.getKey();
 
             setItem(slot, classIcon, event -> {
-                selectedClassType = classType;
+                selectedClassType = classType.toUpperCase();
                 for (int i : slots) {
                     ItemStack item = inventory.getItem(i);
-                    if (item != null) {
-                        item.removeEnchantment(Enchantment.ARROW_DAMAGE);
+                    if (item != null && item.equals(classIcon)) {
+                        item.addUnsafeEnchantment(Enchantment.ARROW_DAMAGE,1);
+                        item.editMeta(itemMeta -> itemMeta.addItemFlags(ItemFlag.HIDE_DYE,ItemFlag.HIDE_ITEM_SPECIFICS,ItemFlag.HIDE_ENCHANTS));
+                        item.editMeta(itemMeta -> itemMeta.displayName(Component.text(MythicLib.plugin.parseColors("&a[ACTIVE] " + ((TextComponent) itemMeta.displayName().asComponent()).content()))));
                     }
                 }
-                classIcon.addUnsafeEnchantment(Enchantment.ARROW_DAMAGE, 1);
-                classIcon.editMeta(itemMeta -> itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS));
 
                 updateConfirmButtonAppearance();
             });
@@ -75,43 +81,41 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
 
     @Override
     protected boolean canConfirm() {
-        return selectedClassType != null && MMOCore.plugin.classManager.has(selectedClassType);
+        return selectedClassType != null && !selectedClassType.isEmpty() && player.hasPermission(PERMISSION_PREFIX + selectedClassType.toUpperCase()) && MMOCore.plugin.classManager.has(selectedClassType);
     }
 
     @Override
     protected String failedConfirmMessage() {
-        return "Class Selection Failure!";
+        return RPGProfiles.getMessage(player,"profile.creation.set.class.failure","&eYou must select a class or have permission to use the selected class!!");
     }
 
     @Override
     protected String successfulConfirmMessage() {
-        return "Successfully Selected " + selectedClassType;
+        return RPGProfiles.getMessage(player,"profile.creation.set.class.successful","&eYou have successfully selected " + selectedClassType.toUpperCase() + "!");
     }
 
     @Override
     protected void onConfirm(InventoryClickEvent event) {
         // Set the class type in the ProfileCreateMenu
 
-        createMenu.setClassType(selectedClassType.toUpperCase());
+        if (hasPreviousMenu(ProfileCreateMenu.class)){
+            ((ProfileCreateMenu) getPreviousMenu()).setClassType(selectedClassType.toUpperCase());
+            close(CloseReason.CONFIRM_OPEN_NEW);
+            return;
+        }
 
-        //Include a way to update the lore of the items here!
-        //todo Fix this so the display of the lore input works!
+        close(CloseReason.CONFIRM);
 
-        // Close the ClassSelectionMenu and return to the ProfileCreateMenu
-        close(InventoryCloseEvent.Reason.PLUGIN);
-        createMenu.open();
     }
 
     @Override
     protected void onCancel(InventoryClickEvent event) {
         // Close the ClassSelectionMenu and return to the ProfileCreateMenu
-        if (createMenu == null){
-            this.close(InventoryCloseEvent.Reason.CANT_USE);
+        if (hasPreviousMenu(ProfileCreateMenu.class)){
+            close(CloseReason.CANCEL_OPEN_NEW);
+            return;
         }
-        else {
-            this.close(InventoryCloseEvent.Reason.PLUGIN);
-            createMenu.open();
-        }
+        close(CloseReason.CANCEL);
     }
 
     @Override
@@ -132,14 +136,28 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
 
     @Override
     public void handleCloseEvent(InventoryCloseEvent event) {
-        if (event.getPlayer().getUniqueId().equals(player.getUniqueId())){
-            if (event.getInventory().getHolder() instanceof ClassSelectionMenu classSelectionMenu){
-                if (classSelectionMenu.createMenu == null) {
-                    return;
-                }
-                createMenu.open();
-                createMenu.updateConfirmButtonAppearance();
+        switch (getCloseReason()){
+            case NONE -> {
+                RPGProfiles.debug("No Close Reason in ClassSelectionMenu!");
             }
+            case ERROR -> throw new RuntimeException("ERROR: Class Selection Menu");
+            case CONFIRM -> {
+                if (hasPreviousMenu(ProfileCreateMenu.class)){
+                    ((ProfileCreateMenu) getPreviousMenu()).setClassType(selectedClassType.toUpperCase());
+                }
+            }
+            case CONFIRM_OPEN_NEW -> {
+                if (hasPreviousMenu(ProfileCreateMenu.class)){
+                    ((ProfileCreateMenu) getPreviousMenu()).setClassType(selectedClassType.toUpperCase());
+                    getPreviousMenu().open();
+                }
+            }
+            case CANCEL_OPEN_NEW -> {
+                if (hasPreviousMenu()){
+                    getPreviousMenu().open();
+                }
+            }
+
         }
     }
     private static int calculateInventorySize() {
@@ -148,7 +166,7 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
         return (numRows + 1) * 9 ;
     }
     private static int[] generateSlots(int numClasses) {
-        int[] centerRowSlots = {3, 4, 5, 12, 13, 14, 21, 22, 23};
+        int[] centerRowSlots = {3, 4, 11, 12, 13, 14, 15, 22, 23};
 
         int[] slots = new int[numClasses];
         System.arraycopy(centerRowSlots, 0, slots, 0, Math.min(numClasses, centerRowSlots.length));
@@ -172,5 +190,26 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
     @Override
     public @NotNull Inventory getInventory() {
         return this.inventory;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+
+        if (!(o instanceof ClassSelectionMenu that)) return false;
+
+        return new EqualsBuilder().appendSuper(super.equals(o)).isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder(17, 37).appendSuper(super.hashCode()).toHashCode();
+    }
+
+    @Override
+    public void clear() {
+
+        selectedClassType = null;
+        setPreviousMenu(null);
     }
 }

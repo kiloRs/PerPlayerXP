@@ -4,12 +4,14 @@ import com.profilesplus.RPGProfiles;
 import com.profilesplus.menu.ProfileRemoveMenu;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
+import lombok.Getter;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+@Getter
 public class DeleteProfilesCommand implements CommandExecutor {
 
     private final RPGProfiles plugin;

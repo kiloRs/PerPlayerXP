@@ -13,6 +13,9 @@ depend:
   - MMOCore
   - MythicLib
 commands:
+  saveProfiles:
+    description: Save the current profiles!
+    usage: /saveProfiles or /saveProfiles <player>
   profiles:
     description: Opens the profiles menu.
     usage: /<command>
@@ -24,11 +27,15 @@ commands:
     usage: /removeProfile <number>
 
 permissions:
-  profilesplus.profiles:
+  rpgprofiles.commands.profiles:
     description: Allows the player to use the /profiles command.
     default: true
-  profilesplus.createprofile:
+  rpgprofiles.commands.createprofile:
     description: Allows the player to use the /createprofile command.
     default: true
-  profilesplus.removeprofile:
+  rpgprofiles.commands.removeprofile:
     default: true
+  rpgprofiles.default.default:
+    default: not op
+  rpgprofiles.default.Ten:
+    default: op

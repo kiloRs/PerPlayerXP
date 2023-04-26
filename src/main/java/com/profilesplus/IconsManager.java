@@ -35,21 +35,21 @@ public class IconsManager {
     public IconsManager(Player player) {
         this.player = player;
 
-        name = createCustomizedIcon("icons.name", "Set Name", "Assign the name of the Profile!");
-        className = createCustomizedIcon("icons.class", "Set Class Type", "Assign the class type of the Profile");
-        locked = createCustomizedIcon("icons.locked", "Locked Slot", "");
-        available = createCustomizedIcon("icons.available", "Available Slot", "");
-        cancel = createCustomizedIcon("icons.cancel", "Cancel", "Cancel the current action");
-        confirm = createCustomizedIcon("icons.confirm", "Confirm", "Confirm the current action");
-        back = createCustomizedIcon("icons.back", "Back", "Go back to the previous menu");
-        confirmDisabled = createCustomizedIcon("icons.confirmDisabled", "Confirm", "Please select a class type before confirming.");
+        name = createCustomizedIcon("icons.name", "&3Set Name", "&7Assign the name of the Profile!");
+        className = createCustomizedIcon("icons.class", "&3Set Class Type", "&7Assign the class type of the Profile");
+        locked = createCustomizedIcon("icons.locked", "&cLocked Slot", "&7");
+        available = createCustomizedIcon("icons.available", "&aAvailable Slot", "&7");
+        cancel = createCustomizedIcon("icons.cancel", "&3Cancel", "&7Cancel the current action");
+        confirm = createCustomizedIcon("icons.confirm", "&3Confirm", "&7Confirm the current action");
+        back = createCustomizedIcon("icons.back", "&3Back", "&7Go back to the previous menu");
+        confirmDisabled = createCustomizedIcon("icons.confirmDisabled", "&3Confirm", "&7Confirm the Actions of this Menu!");
     }
     public ItemStack getClassIcon(String className) {
-        String materialName = RPGProfiles.getInstance().getConfig().getString("icons." + className + ".material");
-        int m = RPGProfiles.getInstance().getConfig().getInt("icons." + className + ".customModel", 0);
+        String materialName = RPGProfiles.getInstance().getConfig().getString("icons.classes." + className + ".material");
+        int m = RPGProfiles.getInstance().getConfig().getInt("icons.classes." + className + ".customModel", 0);
         List<String> lore = new ArrayList<>();
-        if (RPGProfiles.getInstance().getConfig().isList("icons." + className + ".lore")) {
-            lore = RPGProfiles.getInstance().getConfig().getStringList("icons." + className + ".lore");
+        if (RPGProfiles.getInstance().getConfig().isList("icons.classes." + className + ".lore")) {
+            lore = RPGProfiles.getInstance().getConfig().getStringList("icons.classes." + className + ".lore");
         }
 
         if (materialName == null) {
@@ -61,7 +61,7 @@ public class IconsManager {
             matched = Material.PAPER;
         }
         PlayerClass orThrow = MMOCore.plugin.classManager.getOrThrow(className);
-        ItemBuilder builder = new ItemBuilder(matched, MythicLib.plugin.parseColors("&e" + orThrow.getName()));
+        ItemBuilder builder = new ItemBuilder(matched, MythicLib.plugin.parseColors("&3" + orThrow.getName()));
         builder.editMeta(itemMeta -> itemMeta.setCustomModelData(m));
         List<String> finalLore = lore.stream()
                 .map(line -> PlaceholderAPI.setPlaceholders(player, MythicLib.plugin.parseColors(line)))
@@ -76,7 +76,7 @@ public class IconsManager {
 
     private ItemStack createCustomizedIcon(String configPath, String defaultName, String defaultLore) {
         String materialName = config.getString(configPath + ".material", Material.STONE.name());
-        String iconName = config.getString(configPath + ".name", defaultName);
+        String iconName = config.getString(configPath + ".name", defaultName.toUpperCase());
         Material matchedMaterial = Material.matchMaterial(materialName);
 
         if (matchedMaterial == null) {
@@ -86,10 +86,15 @@ public class IconsManager {
         ItemBuilder itemBuilder = new ItemBuilder(matchedMaterial, PlaceholderAPI.setPlaceholders(player, MythicLib.plugin.parseColors(iconName)));
         itemBuilder.editMeta(itemMeta -> itemMeta.setCustomModelData(config.getInt(configPath + ".customModel", 0)));
 
-        List<String> lore = config.getStringList(configPath + ".lore");
-        if (lore.isEmpty()) {
-            lore.add(MythicLib.plugin.parseColors(defaultLore));
+        List<String> lore = new ArrayList<>();
+        if (config.isList(configPath + ".lore")) {
+            lore = config.getStringList(configPath + ".lore");
         }
+        String text = MythicLib.plugin.parseColors(PlaceholderAPI.setPlaceholders(player, defaultLore));
+        if (lore.isEmpty()) {
+            lore.add(text);
+        }
+
 
         List<Component> components = new ArrayList<>();
         for (String s : lore) {
@@ -101,6 +106,6 @@ public class IconsManager {
         return itemBuilder.asOne();
     }
     public boolean hasClassIcon(String id) {
-        return RPGProfiles.getInstance().getConfig().isConfigurationSection("icons." + id) && !RPGProfiles.getInstance().getConfig().getConfigurationSection("icons." + id).getKeys(false).isEmpty();
+        return RPGProfiles.getInstance().getConfig().isConfigurationSection("icons.classes." + id) && !RPGProfiles.getInstance().getConfig().getConfigurationSection("icons.classes." + id).getKeys(false).isEmpty();
     }
 }

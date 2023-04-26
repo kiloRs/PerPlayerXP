@@ -2,11 +2,14 @@ package com.profilesplus.menu;
 
 import com.profilesplus.RPGProfiles;
 import lombok.Getter;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.Plugin;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -17,14 +20,23 @@ public abstract class ConfirmCancelMenu extends InventoryGUI {
     protected final ItemStack confirmButton;
     protected final ItemStack confirmDisabledButton;
     private final ConfirmChange confirmChangeType;
+    private boolean closeByClick = false;
+    private CloseReason closeReason;
 
-    public ConfirmCancelMenu(Player player, Plugin plugin, String title, int size) {
-        super(player, plugin, title, size);
+    public ConfirmCancelMenu(Player player, String title, int size, String key) {
+        this(player,title,size,key,null);
 
+
+    }
+
+    public ConfirmCancelMenu(Player player, String profileCreation, int size, String create,@Nullable HumanEntity externalPlayer) {
+        super(player, profileCreation, size, create, externalPlayer);
+
+        resetClick();
         cancelButton = RPGProfiles.getIcons(player).getCancel();
         confirmButton = RPGProfiles.getIcons(player).getConfirm();
         confirmDisabledButton = RPGProfiles.getIcons(player).getConfirmDisabled();
-
+        closeReason = CloseReason.NONE;
         if (confirmButton.getType() == confirmDisabledButton.getType()) {
             if (confirmDisabledButton.getItemMeta().hasCustomModelData()) {
                 confirmChangeType = ConfirmChange.IMAGE;
@@ -35,14 +47,29 @@ public abstract class ConfirmCancelMenu extends InventoryGUI {
             confirmChangeType = ConfirmChange.TYPE;
         }
 
-        setItem(size - 9, cancelButton, this::onCancel);
+        setItem(size - 9, cancelButton,inventoryClickEvent -> {
+            closeByClick = true;
+            onCancel(inventoryClickEvent);
+        });
         setItem(size - 1, confirmButton, event -> {
 
             if (canConfirm()) {
+                closeByClick = true;
                 onConfirm(event);
+                if (hasExternalViewer()){
+                    getExternalView().sendMessage(successfulConfirmMessage());
+                    clear();
+                }
+                else {
                 player.sendMessage(successfulConfirmMessage());
-            } else {
-                player.sendMessage(failedConfirmMessage());
+                clear();
+            }} else {
+                if (hasExternalViewer()){
+                    getExternalView().sendMessage(failedConfirmMessage());
+                }
+                else {
+                    player.sendMessage(failedConfirmMessage());
+                }
             }
         });
 
@@ -95,6 +122,39 @@ public abstract class ConfirmCancelMenu extends InventoryGUI {
         return clonedItem;
     }
 
+    public abstract void clear();
+
+    public void close(CloseReason closeReason){
+        if (this.inventory.getViewers().contains(player)) {
+            this.closeReason = closeReason;
+            this.close();
+        }
+        else {
+            RPGProfiles.log("PLAYER INVENTORY ERROR!");
+        }
+    }
+    private void resetClick(){
+        closeByClick = false;
+    }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+
+        if (!(o instanceof ConfirmCancelMenu that)) return false;
+
+        return new EqualsBuilder().appendSuper(super.equals(o)).isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder(17, 37).appendSuper(super.hashCode()).toHashCode();
+    }
+
+    enum CloseReason{
+        CANCEL_OPEN_NEW,CANCEL, CONFIRM_OPEN_NEW, CONFIRM, ERROR, NONE;
+    }
     enum ConfirmChange {
         TYPE, IMAGE, NONE;
     }

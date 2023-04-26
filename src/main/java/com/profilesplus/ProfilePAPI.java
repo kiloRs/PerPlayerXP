@@ -38,10 +38,17 @@ public class ProfilePAPI extends PlaceholderExpansion {
 
         // Split the identifier by '_'
         String[] parts = identifier.split("_");
-        if (parts.length < 3) {
+
+        if (parts.length == 2){
+            int slot = Integer.parseInt(parts[0]);
+            String exists = parts[1];
+
+            if ("exists".equalsIgnoreCase(exists)) {
+                Profile profile = PlayerData.get(player.getUniqueId()).getProfiles().get(slot);
+                return profile != null && profile.isCreated() ? "True" : "False";
+            }
             return null;
         }
-
         // Get the slot number and stat type
         int slot;
         try {

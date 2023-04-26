@@ -1,17 +1,14 @@
 package com.profilesplus.players;
 
+import com.profilesplus.LimboManager;
 import com.profilesplus.RPGProfiles;
-import com.profilesplus.saving.BukkitSerialization;
+import io.lumine.mythic.lib.MythicLib;
 import io.lumine.mythic.lib.api.explorer.ItemBuilder;
 import lombok.Getter;
+import lombok.Setter;
 import net.Indyuce.mmocore.MMOCore;
-import net.Indyuce.mmocore.api.player.attribute.PlayerAttribute;
 import net.Indyuce.mmocore.api.player.profess.SavedClassInformation;
-import net.Indyuce.mmocore.skill.RegisteredSkill;
-import net.Indyuce.mmocore.skilltree.SkillTreeNode;
-import net.Indyuce.mmocore.skilltree.tree.SkillTree;
 import net.kyori.adventure.text.Component;
-import net.milkbowl.vault.economy.Economy;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -26,8 +23,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
+
+import static com.profilesplus.RPGProfiles.economy;
 
 
 @Getter
@@ -35,15 +33,18 @@ public class Profile {
     private final String id;
     private final net.Indyuce.mmocore.api.player.PlayerData mmoCorePlayer;
     private final PlayerData internalPlayer;
-    private final SavedClassInformation classInformation;
+    private final boolean fromFile;
+    private SavedClassInformation classInformation;
     private final String className;
     private ConfigurationSection section;
     private final long creationTime;
+    @Setter
     private boolean created = false;
-    private double balance = 0;
+    @Setter
     private Location lastKnownLocation;
     private final int index;
-    private boolean fresh = true;
+    private final ProfileBalance profileBalance;
+    private boolean containsValues=false;
 
     public Profile(String id, String className, int slot, UUID num){
         this(id,className,slot,num,false);
@@ -52,48 +53,49 @@ public class Profile {
         this.id = id;
         this.index = slotNumber;
         this.className = className;
-        this.mmoCorePlayer = net.Indyuce.mmocore.api.player.PlayerData.get(player);
+        if (!MMOCore.plugin.classManager.has(className.toUpperCase())){
+            throw new RuntimeException("Profile Class Not In MMOCORE: " + className);
+        }
+        this.mmoCorePlayer = MMOCore.plugin.dataProvider.getDataManager().get(player);
         this.internalPlayer = PlayerData.get(player);
+        this.fromFile = fromFile;
         this.section = internalPlayer.getConfig().getConfigurationSection("profiles." + this.index);
+        this.profileBalance = new ProfileBalance(this);
+
         if (this.section == null || !fromFile){
             this.section = internalPlayer.getConfig().createSection("profiles." + index);
-            this.classInformation = new SavedClassInformation(mmoCorePlayer);
+
+            if (internalPlayer.getDefaultData() != null){
+                this.classInformation = internalPlayer.getActiveProfile().getClassInformation();
+                this.lastKnownLocation = internalPlayer.getActiveProfile().getLastKnownLocation();
+                this.containsValues = true;
+            }
         }
         else {
             this.classInformation = new SavedClassInformation(section.isConfigurationSection(className) ? section.getConfigurationSection(className) : section.createSection(className));
         }
         this.creationTime = section.isLong("creation-time")?section.getLong("creation-time",System.currentTimeMillis()):System.currentTimeMillis();
-        assignName();
 
-
+        if (containsValues){
+            return;
+        }
         this.lastKnownLocation = loadLocation();
-
-        if (this.lastKnownLocation == null){
-            lastKnownLocation = internalPlayer.getPlayer().getLocation();
-        }
-        if (RPGProfiles.isUsingEconomy()){
-            if (section.isDouble("balance")){
-                balance = section.getDouble("balance");
-            }
-        }
-        else {
-            balance = 0;
-        }
 
     }
     public Profile(String id, String className, int slot, Player player) {
         this(id,className,slot,player.getUniqueId());
     }
     private void assignName() {
-        String name = StringUtils.capitalize(id);
+        String name = getName();
         internalPlayer.getPlayer().displayName(Component.text(name));
         internalPlayer.getPlayer().playerListName(Component.text(name));
+        internalPlayer.getPlayer().customName(Component.text(MythicLib.plugin.parseColors(name + "&e[" + internalPlayer.getPlayer().getName() + "]")));
 
     }
 
     public boolean update() {
         if (!(internalPlayer.isActive(index))){
-            RPGProfiles.log("Active not found for " + index + " of " + internalPlayer.getPlayer().getName());
+            RPGProfiles.debug("Active not found for " + index + " of " + internalPlayer.getPlayer().getName());
             return false;
         }
         // Save the current active profile if it exists
@@ -101,70 +103,58 @@ public class Profile {
             @Override
             public void run() {
                 updateMMOCore();
+                assignName();
                 if (lastKnownLocation != null) {
+                    LimboManager manager = RPGProfiles.getLimboManager();
+                    if (lastKnownLocation.toBlockLocation().equals(manager.getSpectatorLocation().toBlockLocation())){
+                        if (manager.hasOriginalLocation(getInternalPlayer().getPlayer())){
+                            lastKnownLocation = manager.getOriginalLocation(internalPlayer.getPlayer());
+                        }
+                        else {
+                            lastKnownLocation = manager.getOriginalLocation(internalPlayer.getPlayer());
+                        }
+                    }
                     internalPlayer.getPlayer().teleport(lastKnownLocation, PlayerTeleportEvent.TeleportCause.PLUGIN);
                 }
                 // Set the player's balance to the last saved balance of the active profile
 
-                internalPlayer.saveConfig();
 
+                profileBalance.loadBalance();
                 loadInventory();
 
             }
         }.runTask(RPGProfiles.getInstance());
         return true;
     }
-    private void saveInventory(){
-        RPGProfiles.getInventoryDatabase().saveInventory(internalPlayer.getUuid().toString(), index,BukkitSerialization.serializeInventory(internalPlayer.getPlayer().getInventory()));
-    }
-    public void loadInventory(){
-
-        RPGProfiles.getInventoryDatabase().loadInventory(internalPlayer.getUuid().toString(), index);
-    }
     private void updateMMOCore(){
 
-        mmoCorePlayer.setClass(MMOCore.plugin.classManager.getOrThrow(className));
-        mmoCorePlayer.setExperience(classInformation.getExperience());
-        mmoCorePlayer.setLevel(classInformation.getLevel());
-        mmoCorePlayer.setHealth(classInformation.getHealth());
-        mmoCorePlayer.setStamina(classInformation.getStamina());
-        mmoCorePlayer.setMana(classInformation.getMana());
-        mmoCorePlayer.setStellium(classInformation.getStellium());
-        mmoCorePlayer.setSkillPoints(classInformation.getSkillPoints());
-        mmoCorePlayer.setSkillReallocationPoints(classInformation.getSkillReallocationPoints());
-        mmoCorePlayer.setAttributePoints(classInformation.getAttributePoints());
-        mmoCorePlayer.setAttributeReallocationPoints(classInformation.getAttributeReallocationPoints());
-        for (SkillTree skillTree : MMOCore.plugin.skillTreeManager.getAll()) {
-            mmoCorePlayer.setSkillTreePoints(skillTree.getId(),classInformation.getSkillTreePoints(skillTree.getId()));
-            for (SkillTreeNode node : skillTree.getNodes()) {
-                if (classInformation.getNodeLevels().containsKey(node.getId())) {
-                    if (classInformation.getNodeLevels().get(node.getId()) != null)
-                        mmoCorePlayer.setNodeLevel(node, classInformation.getNodeLevel(node.getId()));
-                    else
-                        mmoCorePlayer.setNodeLevel(node,0);
-
-                }
-            }
-        }
-        for (RegisteredSkill registeredSkill : MMOCore.plugin.skillManager.getAll()) {
-            int skillLevel = classInformation.getSkillLevel(registeredSkill);
-            if (skillLevel > 0){
-                mmoCorePlayer.setSkillLevel(registeredSkill,skillLevel);
-            }
-        }
-        for (PlayerAttribute playerAttribute : MMOCore.plugin.attributeManager.getAll()) {
-            int attributeLevel = classInformation.getAttributeLevel(playerAttribute.getId());
-            mmoCorePlayer.getAttributes().getInstance(playerAttribute).setBase(attributeLevel);
-        }
-
+        classInformation.load(MMOCore.plugin.classManager.getOrThrow(className), net.Indyuce.mmocore.api.player.PlayerData.get(internalPlayer.getUuid()));
     }
-    public void saveToConfigurationSection(boolean locationBalance, boolean inventory) {
+
+    public void saveToConfigurationSection(boolean fromPlayer){
+        if (fromPlayer){
+            classInformation = new SavedClassInformation(mmoCorePlayer);
+            lastKnownLocation = internalPlayer.getPlayer().getLocation().toBlockLocation();
+            profileBalance.saveBalance(fromPlayer);
+        }
+        else {
+            if (containsValues){
+                saveToConfigurationSection(true,true,RPGProfiles.isUsingEconomy());
+            }
+            else{
+                throw new RuntimeException("No Values for " + this.index + " (" + this.getName() + ")");
+            }
+        }
+        saveToConfigurationSection(true,true,RPGProfiles.isUsingEconomy() && economy != null );
+    }
+    public void saveToConfigurationSection(boolean location, boolean inventory, boolean balance) {
+
         section.set("id", id);
-        section.set("className", className);
+        section.set("classType", className.toUpperCase());
         if (!section.contains("creation-time")) {
             section.set("creation-time", creationTime);
         }
-        // Save classInformation
+
         ConfigurationSection classInformationSection = section.isConfigurationSection(className) ?
                 section.getConfigurationSection(className) : section.createSection(className);
 
@@ -173,49 +163,69 @@ public class Profile {
             throw new RuntimeException("No Class Information in " + id);
         }
         // Save all properties of SavedClassInformation
-        classInformationSection.set("level", mmoCorePlayer.getLevel());
-        classInformationSection.set("experience", mmoCorePlayer.getExperience());
-        classInformationSection.set("skill-points", mmoCorePlayer.getSkillPoints());
-        classInformationSection.set("attribute-points", mmoCorePlayer.getAttributePoints());
-        classInformationSection.set("attribute-realloc-points", mmoCorePlayer.getAttributeReallocationPoints());
-        classInformationSection.set("skill-reallocation-points", mmoCorePlayer.getSkillReallocationPoints());
-        classInformationSection.set("skill-tree-reallocation-points", mmoCorePlayer.getSkillTreeReallocationPoints());
-        classInformationSection.set("health", mmoCorePlayer.getHealth());
-        classInformationSection.set("mana", mmoCorePlayer.getMana());
-        classInformationSection.set("stamina", mmoCorePlayer.getStamina());
-        classInformationSection.set("stellium", mmoCorePlayer.getStellium());
+        classInformationSection.set("level", classInformation.getLevel());
+        classInformationSection.set("experience", classInformation.getExperience());
+        classInformationSection.set("skill-points", classInformation.getSkillPoints());
+        classInformationSection.set("attribute-points", classInformation.getAttributePoints());
+        classInformationSection.set("attribute-realloc-points", classInformation.getAttributeReallocationPoints());
+        classInformationSection.set("skill-reallocation-points", classInformation.getSkillReallocationPoints());
+        classInformationSection.set("skill-tree-reallocation-points", classInformation.getSkillTreeReallocationPoints());
+        classInformationSection.set("health", classInformation.getHealth());
+        classInformationSection.set("mana", classInformation.getMana());
+        classInformationSection.set("stamina", classInformation.getStamina());
+        classInformationSection.set("stellium", classInformation.getStellium());
 
         ConfigurationSection attributeSection = classInformationSection.createSection("attribute");
-        mmoCorePlayer.getAttributes().mapPoints().forEach(attributeSection::set);
+        classInformation.mapAttributeLevels().forEach(attributeSection::set);
 
         ConfigurationSection skillSection = classInformationSection.createSection("skill");
-        mmoCorePlayer.mapSkillLevels().forEach(skillSection::set);
+        classInformation.mapSkillLevels().forEach(skillSection::set);
 
         ConfigurationSection skillTreePointsSection = classInformationSection.createSection("skill-tree-points");
-        mmoCorePlayer.mapSkillTreePoints().forEach(skillTreePointsSection::set);
+        classInformation.mapSkillTreePoints().forEach(skillTreePointsSection::set);
 
         ConfigurationSection nodeLevelsSection = classInformationSection.createSection("node-levels");
-        mmoCorePlayer.getNodeLevels().forEach(nodeLevelsSection::set);
+        classInformation.getNodeLevels().forEach(nodeLevelsSection::set);
 
         ConfigurationSection nodeTimesClaimedSection = classInformationSection.createSection("node-times-claimed");
-        mmoCorePlayer.getNodeTimesClaimed().forEach(nodeTimesClaimedSection::set);
+        classInformation.getNodeTimesClaimed().forEach(nodeTimesClaimedSection::set);
 
         ConfigurationSection boundSkillsSection = classInformationSection.createSection("bound-skills");
-        mmoCorePlayer.mapBoundSkills().forEach((key, value) -> boundSkillsSection.set(key.toString(), value));
+        classInformation.mapBoundSkills().forEach((key, value) -> boundSkillsSection.set(key.toString(), value));
 
-        classInformationSection.set("unlocked-items", new ArrayList<>(mmoCorePlayer.getUnlockedItems()));
+        classInformationSection.set("unlocked-items", new ArrayList<>(classInformation.getUnlockedItems()));
+        if (location) {
+            RPGProfiles.debug("Saving Profile Location: " + id + " " + index + " " + internalPlayer.getPlayer().getName());
 
-        if (locationBalance) {
-            saveLocationAndBalance();
+            saveLocation();
+
         }
-
         internalPlayer.saveConfig();
 
+        if (balance){
+            profileBalance.saveBalance(true);
+        }
         if (inventory) {
+            RPGProfiles.debug("Saving Profile Inventory: " + id + " " + index + " " + internalPlayer.getPlayer().getName());
+
             saveInventory();
+            if (hasSavedInventory()){
+                RPGProfiles.debug("Saved Inventory was successful!");
+            }
+
         }
 
         created = true;
+    }
+
+    public void loadInventory(){
+        RPGProfiles.getInventoryManager().loadInventory(internalPlayer.getPlayer(), index);
+    }
+    public void saveInventory(){
+        RPGProfiles.getInventoryManager().saveInventory(getInternalPlayer().getPlayer(), index);
+    }
+    boolean hasSavedInventory() {
+        return RPGProfiles.getInventoryManager().hasSavedInventory(internalPlayer.getPlayer(),index);
     }
 
     // Method to load location from the configuration
@@ -227,18 +237,14 @@ public class Profile {
                     locSection.getDouble("x"),
                     locSection.getDouble("y"),
                     locSection.getDouble("z"),
-                    (float) locSection.getDouble("yaw"),
-                    (float) locSection.getDouble("pitch")
+                    (float) locSection.getDouble("yaw",0.5),
+                    (float) locSection.getDouble("pitch",0.5)
             );
         }
         return null;
     }
-
-    public void setLastKnownLocation(Location location){
-        this.lastKnownLocation = location.toBlockLocation();
-    }
     // Method to save location and balance to the configuration
-    public void saveLocationAndBalance() {
+    public void saveLocation() {
         Player player = Bukkit.getPlayer(internalPlayer.getUuid());
         if (player == null){
             player = Bukkit.getOfflinePlayer(internalPlayer.getUuid()).getPlayer();
@@ -246,7 +252,7 @@ public class Profile {
         if (player == null){
             throw new RuntimeException("Error with Profile owner: " + internalPlayer.getUuid());
         }
-        Location loc = player.getLocation();
+        Location loc =  lastKnownLocation==null?player.getLocation():lastKnownLocation;
 
         ConfigurationSection locSection = section.createSection("location");
         locSection.set("world", loc.getWorld().getName());
@@ -256,11 +262,6 @@ public class Profile {
         locSection.set("yaw", loc.getYaw());
         locSection.set("pitch", loc.getPitch());
 
-        if (RPGProfiles.isUsingEconomy()) {
-            Economy economy = ((RPGProfiles) RPGProfiles.getInstance()).getEconomy();
-            balance = economy.getBalance(player);
-            section.set("balance", balance);
-        }
         internalPlayer.saveConfig();
     }
     @NotNull(value = "Empty Name")
@@ -269,23 +270,8 @@ public class Profile {
     }
 
     public ProfileIcon getIcon(){
-        String materialName = RPGProfiles.getInstance().getConfig().getString("icons." + className + ".material");
-        int m = RPGProfiles.getInstance().getConfig().getInt("icons." + className + ".customModel", 0);
-        List<String> list = RPGProfiles.getInstance().getConfig().getStringList("icons." + className + ".lore");
-        String[] lore = list.toArray(value -> list.toArray(new String[0]));
-
-        if (lore == null){
-            lore = new String[]{"Class Icon is Empty!"};
-        }
-        if (materialName == null){
-            materialName = Material.PAPER.name();
-        }
-        Material matched = Material.matchMaterial(materialName);
-
-        if (matched == null){
-            matched = Material.PAPER;
-        }
-        return new ProfileIcon(matched,m,lore);
+        ItemStack classIcon = RPGProfiles.getIcons(internalPlayer.getPlayer()).getClassIcon(className);
+        return new ProfileIcon(classIcon.getType(),classIcon.getItemMeta().getCustomModelData(),classIcon.getLore().toArray(new String[0]));
     }
 
     @Override
@@ -294,12 +280,12 @@ public class Profile {
 
         if (!(o instanceof Profile profile)) return false;
 
-        return new EqualsBuilder().append(getCreationTime(), profile.getCreationTime()).append(getIndex(), profile.getIndex()).append(getId(), profile.getId()).append(getClassName(), profile.getClassName()).isEquals();
+        return new EqualsBuilder().append(getIndex(), profile.getIndex()).append(getId(), profile.getId()).append(getClassName(), profile.getClassName()).isEquals();
     }
 
     @Override
     public int hashCode() {
-        return new HashCodeBuilder(17, 37).append(getId()).append(getClassName()).append(getCreationTime()).append(getIndex()).toHashCode();
+        return new HashCodeBuilder(17, 37).append(getId()).append(getClassName()).append(getIndex()).toHashCode();
     }
 
     public int getIndex() {
@@ -321,5 +307,10 @@ public class Profile {
             builder.editMeta(itemMeta -> itemMeta.setCustomModelData(customModel));
             return builder.asOne();
         }
+    }
+
+
+    public boolean hasSaveInConfig(){
+        return section != null && created ;
     }
 }
