@@ -1,12 +1,11 @@
 package com.profilesplus.menu;
 
 import com.profilesplus.RPGProfiles;
+import com.profilesplus.players.PlayerData;
 import io.lumine.mythic.lib.MythicLib;
 import lombok.Getter;
 import net.Indyuce.mmocore.MMOCore;
 import net.Indyuce.mmocore.api.player.profess.PlayerClass;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.enchantments.Enchantment;
@@ -18,6 +17,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,7 +31,7 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
     public ClassSelectionMenu(@NotNull Player player, @NotNull ProfileCreateMenu createMenu){
         this(player,createMenu,null);
     }
-    public ClassSelectionMenu(@NotNull Player player,@NotNull ProfileCreateMenu createMenu, HumanEntity externalView) {
+    public ClassSelectionMenu(@NotNull Player player,@NotNull ProfileCreateMenu createMenu,@Nullable HumanEntity externalView) {
         super(player, MythicLib.plugin.parseColors("&aSelect Class Type"), calculateInventorySize(),"CLASS_SELECTION",externalView);
         setPreviousMenu(createMenu);
         Map<String, ItemStack> classIcons = new HashMap<>();
@@ -69,8 +69,7 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
                     ItemStack item = inventory.getItem(i);
                     if (item != null && item.equals(classIcon)) {
                         item.addUnsafeEnchantment(Enchantment.ARROW_DAMAGE,1);
-                        item.editMeta(itemMeta -> itemMeta.addItemFlags(ItemFlag.HIDE_DYE,ItemFlag.HIDE_ITEM_SPECIFICS,ItemFlag.HIDE_ENCHANTS));
-                        item.editMeta(itemMeta -> itemMeta.displayName(Component.text(MythicLib.plugin.parseColors("&a[ACTIVE] " + ((TextComponent) itemMeta.displayName().asComponent()).content()))));
+                        item.editMeta(itemMeta -> itemMeta.addItemFlags(ItemFlag.HIDE_DYE,ItemFlag.HIDE_ITEM_SPECIFICS));
                     }
                 }
 
@@ -81,6 +80,12 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
 
     @Override
     protected boolean canConfirm() {
+        PlayerData playerData = PlayerData.get(player);
+        if (!playerData.canChangeProfiles()){
+            String message = RPGProfiles.getMessage(playerData.getPlayer(), "prohibited.notify", "&aYou are prohibited from using this menu while &b(In Combat/Sleeping/Flying/Casting)");
+            playerData.getPlayer().sendMessage(message);
+            return false;
+        }
         return selectedClassType != null && !selectedClassType.isEmpty() && player.hasPermission(PERMISSION_PREFIX + selectedClassType.toUpperCase()) && MMOCore.plugin.classManager.has(selectedClassType);
     }
 
@@ -98,21 +103,21 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
     protected void onConfirm(InventoryClickEvent event) {
         // Set the class type in the ProfileCreateMenu
 
-        if (hasPreviousMenu(ProfileCreateMenu.class)){
-            ((ProfileCreateMenu) getPreviousMenu()).setClassType(selectedClassType.toUpperCase());
+        if (hasPreviousMenu()){
+            ((ProfileCreateMenu) getPreviousMenu()).setClassType(selectedClassType);
             close(CloseReason.CONFIRM_OPEN_NEW);
+            getPreviousMenu().open();
             return;
         }
-
-        close(CloseReason.CONFIRM);
 
     }
 
     @Override
     protected void onCancel(InventoryClickEvent event) {
         // Close the ClassSelectionMenu and return to the ProfileCreateMenu
-        if (hasPreviousMenu(ProfileCreateMenu.class)){
+        if (hasPreviousMenu()){
             close(CloseReason.CANCEL_OPEN_NEW);
+            getPreviousMenu().open();
             return;
         }
         close(CloseReason.CANCEL);
@@ -136,29 +141,25 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
 
     @Override
     public void handleCloseEvent(InventoryCloseEvent event) {
-        switch (getCloseReason()){
-            case NONE -> {
-                RPGProfiles.debug("No Close Reason in ClassSelectionMenu!");
-            }
-            case ERROR -> throw new RuntimeException("ERROR: Class Selection Menu");
-            case CONFIRM -> {
-                if (hasPreviousMenu(ProfileCreateMenu.class)){
-                    ((ProfileCreateMenu) getPreviousMenu()).setClassType(selectedClassType.toUpperCase());
-                }
-            }
-            case CONFIRM_OPEN_NEW -> {
-                if (hasPreviousMenu(ProfileCreateMenu.class)){
-                    ((ProfileCreateMenu) getPreviousMenu()).setClassType(selectedClassType.toUpperCase());
-                    getPreviousMenu().open();
-                }
-            }
-            case CANCEL_OPEN_NEW -> {
-                if (hasPreviousMenu()){
-                    getPreviousMenu().open();
-                }
-            }
-
-        }
+//        switch (getCloseReason()){
+//            case NONE -> {
+//                RPGProfiles.debug("No Close Reason in ClassSelectionMenu!");
+//            }
+//            case ERROR -> throw new RuntimeException("ERROR: Class Selection Menu");
+//            case CONFIRM_OPEN_NEW -> {
+//                if (hasPreviousMenu()){
+//                    ((ProfileCreateMenu) getPreviousMenu()).setClassType(selectedClassType.toUpperCase());
+//                    ((ProfileCreateMenu) ClassSelectionMenu.super.getPreviousMenu()).open();
+//
+//                }
+//            }
+//            case CANCEL_OPEN_NEW -> {
+//                if (hasPreviousMenu()){
+//                    ((ProfileCreateMenu) ClassSelectionMenu.super.getPreviousMenu()).open();
+//                }
+//            }
+//
+//        }
     }
     private static int calculateInventorySize() {
         int numClasses = MMOCore.plugin.classManager.getAll().size();
@@ -166,7 +167,7 @@ public class ClassSelectionMenu extends ConfirmCancelMenu {
         return (numRows + 1) * 9 ;
     }
     private static int[] generateSlots(int numClasses) {
-        int[] centerRowSlots = {3, 4, 11, 12, 13, 14, 15, 22, 23};
+        int[] centerRowSlots = {2,3,4,5,6,11,12,13,14,15,16};
 
         int[] slots = new int[numClasses];
         System.arraycopy(centerRowSlots, 0, slots, 0, Math.min(numClasses, centerRowSlots.length));

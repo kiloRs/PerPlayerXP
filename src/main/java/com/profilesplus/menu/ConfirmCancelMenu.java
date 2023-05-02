@@ -21,12 +21,10 @@ public abstract class ConfirmCancelMenu extends InventoryGUI {
     protected final ItemStack confirmDisabledButton;
     private final ConfirmChange confirmChangeType;
     private boolean closeByClick = false;
-    private CloseReason closeReason;
+    protected CloseReason closeReason;
 
     public ConfirmCancelMenu(Player player, String title, int size, String key) {
         this(player,title,size,key,null);
-
-
     }
 
     public ConfirmCancelMenu(Player player, String profileCreation, int size, String create,@Nullable HumanEntity externalPlayer) {
@@ -50,6 +48,7 @@ public abstract class ConfirmCancelMenu extends InventoryGUI {
         setItem(size - 9, cancelButton,inventoryClickEvent -> {
             closeByClick = true;
             onCancel(inventoryClickEvent);
+
         });
         setItem(size - 1, confirmButton, event -> {
 
@@ -58,11 +57,11 @@ public abstract class ConfirmCancelMenu extends InventoryGUI {
                 onConfirm(event);
                 if (hasExternalViewer()){
                     getExternalView().sendMessage(successfulConfirmMessage());
-                    clear();
+                    return;
                 }
                 else {
                 player.sendMessage(successfulConfirmMessage());
-                clear();
+                return;
             }} else {
                 if (hasExternalViewer()){
                     getExternalView().sendMessage(failedConfirmMessage());
@@ -127,10 +126,7 @@ public abstract class ConfirmCancelMenu extends InventoryGUI {
     public void close(CloseReason closeReason){
         if (this.inventory.getViewers().contains(player)) {
             this.closeReason = closeReason;
-            this.close();
-        }
-        else {
-            RPGProfiles.log("PLAYER INVENTORY ERROR!");
+            super.close();
         }
     }
     private void resetClick(){

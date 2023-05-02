@@ -1,10 +1,14 @@
 package com.profilesplus.saving;
 
 
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 public class InventoryManager {
@@ -44,6 +48,34 @@ public class InventoryManager {
 
     public boolean hasSavedInventory(Player player, int profileIndex) {
         return database.hasSavedInventory(player.getUniqueId(), profileIndex);
+    }
+    public int getItemsInInventory(Player player, ItemStack item) {
+        int count = 0;
+        for (ItemStack i : getInventory(player)) {
+            if (item == null && i != null && i.getType()!=Material.AIR){
+                count+= i.getAmount();
+            }
+            if (i != null && i.getType()!=(Material.AIR) && i.getType() == item.getType() && i.getAmount() >= item.getAmount()) {
+                count += i.getAmount();
+            }
+        }
+        return count;
+    }
+
+    public ItemStack[] getInventory(Player player) {
+        String inventoryData = database.loadInventory(player.getUniqueId().toString(), 0);
+        if (inventoryData != null) {
+            try {
+                return InventorySerialization.deserializeInventory(player, inventoryData).getContents();
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        return new ItemStack[0];
+    }
+
+    public List<ItemStack> getInventoryAsList(Player player) {
+        return Arrays.asList(getInventory(player));
     }
 
     public void close() {

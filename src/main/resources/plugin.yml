@@ -13,6 +13,9 @@ depend:
   - MMOCore
   - MythicLib
 commands:
+  rpgprofiles:
+    usage: /rpgprofiles reload
+    description: "The main command of the plugin!"
   saveProfiles:
     description: Save the current profiles!
     usage: /saveProfiles or /saveProfiles <player>

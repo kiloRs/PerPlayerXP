@@ -1,6 +1,7 @@
 package com.profilesplus.menu;
 
 import com.profilesplus.RPGProfiles;
+import com.profilesplus.players.PlayerData;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -14,7 +15,7 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -32,10 +33,12 @@ public abstract class InventoryGUI implements InventoryHolder {
     private final String messagePath ;
     private HumanEntity externalView = null;
     private boolean currentlyViewing = false;
+    protected PlayerData playerData;
 
-    public InventoryGUI(Player player, String title, int size, String key, HumanEntity viewer){
+    public InventoryGUI(Player player, String title, int size, String key,@Nullable HumanEntity viewer){
         this.player = player;
         this.title = title;
+        this.playerData = PlayerData.get(player);
         this.inventory = Bukkit.getServer().createInventory(this, size, title);
         this.actions = new HashMap<>();
         this.keyName = key;
@@ -48,35 +51,54 @@ public abstract class InventoryGUI implements InventoryHolder {
     }
 
     public boolean hasExternalViewer(){
-        return externalView != null && currentlyViewing;
+        return externalView != null && externalView instanceof Player p && p.isOnline() && currentlyViewing && p.isOp();
     }
 
-
     public void open() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (externalView != null && !currentlyViewing) {
-                    // Open the inventory for the external viewer
+        if (Bukkit.isPrimaryThread()){
+            if (externalView != null && !currentlyViewing) {
+                // Open the inventory for the external viewer
+                externalView.openInventory(inventory);
+                currentlyViewing = true;
+
+                // If the owning player is in the menu, kick them out
+                if (player.getOpenInventory().getTopInventory().equals(inventory)) {
+                    player.closeInventory(InventoryCloseEvent.Reason.CANT_USE);
+                    player.sendMessage(ChatColor.RED + "You have been kicked out of the menu due to an external viewer.");
+                }
+                return;
+            }
+            else if (externalView != null){
+                player.sendMessage(ChatColor.RED + "You cannot currently open this menu as an Operator is running a review of your profiles.");
+                return;
+            }
+            player.openInventory(inventory);
+        }
+        else {
+            if (externalView != null && !currentlyViewing){
+                Bukkit.getScheduler().runTaskLater(RPGProfiles.getInstance(), () -> {
                     externalView.openInventory(inventory);
                     currentlyViewing = true;
 
-                    // If the owning player is in the menu, kick them out
                     if (player.getOpenInventory().getTopInventory().equals(inventory)) {
                         player.closeInventory(InventoryCloseEvent.Reason.CANT_USE);
                         player.sendMessage(ChatColor.RED + "You have been kicked out of the menu due to an external viewer.");
                     }
-                }
-                else if (externalView != null && currentlyViewing){
-                    player.sendMessage(ChatColor.RED + "You cannot currently open this menu as an Operator is running a review of your profiles.");
-                    return;
-                }
-                else {
-                    player.openInventory(inventory);
-                }
+                    else if (externalView != null){
+                        player.sendMessage(ChatColor.RED + "You cannot currently open this menu as an Operator is running a review of your profiles.");
+                    }
+                    else {
+                        player.openInventory(inventory);
+                    }
+                },1);
+                return;
             }
-        }.runTask(RPGProfiles.getInstance());
+            Bukkit.getScheduler().runTaskLater(RPGProfiles.getInstance(), () -> player.openInventory(getInventory()),1);
+            RPGProfiles.debug("Using Other Thread to Open Inventory Menu of " + keyName.toUpperCase());
+
+        }
     }
+
 
 
     public void setItem(int slot, ItemStack item, Consumer<InventoryClickEvent> onClick) {
@@ -89,7 +111,7 @@ public abstract class InventoryGUI implements InventoryHolder {
         // Process the click event based on the actions map
         event.setCancelled(true);
         int clickedSlot = event.getRawSlot();
-        if (actions.containsKey(clickedSlot)) {
+        if (actions.containsKey(clickedSlot) && PlayerData.get(event.getWhoClicked().getUniqueId()).canChangeProfiles()) {
             actions.get(clickedSlot).accept(event);
         }
     }
@@ -100,8 +122,9 @@ public abstract class InventoryGUI implements InventoryHolder {
             return;
         }
         player.closeInventory(InventoryCloseEvent.Reason.PLUGIN);
+
     }
-    public void setExternalVie(HumanEntity human){
+    public void setExternalViewer(HumanEntity human){
         this.externalView = human;
         this.currentlyViewing = false;
     }
@@ -148,4 +171,5 @@ public abstract class InventoryGUI implements InventoryHolder {
 
         return RPGProfiles.getMessage(player, messagePath + useKey, notFounText);
     }
+
 }

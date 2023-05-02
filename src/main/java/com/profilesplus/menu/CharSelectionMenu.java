@@ -22,16 +22,15 @@ import java.util.List;
 
 @Getter
 public class CharSelectionMenu extends InventoryGUI {
-    private final PlayerData playerData;
     private static int[] centerSlots;
     private int slotUse = 0;
+    private boolean shift = false;
     public CharSelectionMenu(PlayerData owning){
         this(owning,null);
 
     }
     public CharSelectionMenu( PlayerData playerData, HumanEntity external) {
         super(playerData.getPlayer(),  MythicLib.plugin.parseColors("Profiles"), 54,"CHAR_SELECTION",external);
-        this.playerData = playerData;
         Player player = playerData.getPlayer();
 
         // Display profiles in the center of the GUI
@@ -41,9 +40,9 @@ public class CharSelectionMenu extends InventoryGUI {
 
             ItemStack icon;
 
-            boolean hasPermission = toProfileSlot < 6 && toProfileSlot > 0 || player.hasPermission(PlayerData.getPERMISSION_PREFIX() + toProfileSlot);
+            boolean hasPermission = playerData.hasPermissionFor(toProfileSlot);
 
-            Profile profile = playerData.getProfiles().get(toProfileSlot);
+            Profile profile = playerData.getProfileStorage().getProfile(toProfileSlot);
 
             icon = updateSlot(player, profile, hasPermission);
 
@@ -55,22 +54,37 @@ public class CharSelectionMenu extends InventoryGUI {
                 }
                 if (profile != null){
                     if (event.isLeftClick()){
-                        if (playerData.changeProfile(profile,null)) {
-                            RPGProfiles.log("Profile Change!");
+                        if (!playerData.canChangeProfiles()){
+                            close();
+                            String message = RPGProfiles.getMessage(playerData.getPlayer(), "prohibited.notify", "&aYou are prohibited from using this menu while &b(In Combat/Sleeping/Flying/Casting)");
+                            playerData.getPlayer().sendMessage(message);
                             return;
                         }
-                        RPGProfiles.log("No Profile Change!");
+                        if (playerData.changeProfile(profile,false)) {
+                            return;
+                        }
                         return;
                     }
-                    else if (event.isRightClick()){
-                        new ProfileRemoveMenu(playerData,profile,this,getExternalView()).open();
-                        RPGProfiles.log("Opening Removal GUI");
+                    else if (event.isRightClick() && event.isShiftClick()){
+                        if (!playerData.canChangeProfiles()){
+                            close();
+                            String message = RPGProfiles.getMessage(playerData.getPlayer(), "prohibited.notify", "&aYou are prohibited from using this menu while &b(In Combat/Sleeping/Flying/Casting)");
+                            playerData.getPlayer().sendMessage(message);
+                            return;
+                        }
+                        new ProfileRemoveMenu(playerData,profile,this,hasExternalViewer()?getExternalView():null).open();
                     }
                 }
                 else {
+                    if (!playerData.canChangeProfiles()){
+                        close();
+                        String message = RPGProfiles.getMessage(playerData.getPlayer(), "prohibited.notify", "&aYou are prohibited from using this menu while &b(In Combat/Sleeping/Flying/Casting)");
+                        playerData.getPlayer().sendMessage(message);
+                        return;
+                    }
+                    shift = event.isShiftClick();
                     ProfileCreateMenu menu = new ProfileCreateMenu(playerData, this,getExternalView());
                     menu.open();
-                    RPGProfiles.log("Opening Creation GUI");
                 }
             });
         }
@@ -79,20 +93,30 @@ public class CharSelectionMenu extends InventoryGUI {
     private static ItemStack updateSlot(Player player, Profile profile, boolean hasPermission) {
         ItemStack icon;
         if (profile != null && hasPermission) {
-            icon = profile.getIcon().getItemStack();
+            icon = profile.getIcon();
             ItemMeta iconMeta = icon.getItemMeta();
 
             List<String> lore = iconMeta.hasLore() ? iconMeta.getLore() : new ArrayList<>();
-            lore.add(0, ChatColor.GRAY + RPGProfiles.getMessage(player,"profile.clicks.prompt","&eLeft Click to Select &7- &eShift-Right Click to Remove"));
+            lore.add(0, ChatColor.GRAY + RPGProfiles.getMessage(player,"click.profile","&eLeft Click to Activate &7- &eShift-Right Click to Remove"));
 
             iconMeta.setLore(lore);
             icon.setItemMeta(iconMeta);
         } else {
             if (hasPermission) {
-                icon = RPGProfiles.getIcons(player).getAvailable();
+                ItemStack available = RPGProfiles.getIcons(player).getAvailable();
+                List<String> loreList = available.getItemMeta().hasLore() ? available.getItemMeta().getLore() : new ArrayList<String>();
+
+                loreList.add(0,RPGProfiles.getMessage(player,"click.available","&eLeft Click to Activate + Create - Shift Left Click to Create!"));
+                available.getItemMeta().setLore(loreList);
+                icon = available;
+
             } else {
-                icon = RPGProfiles.getIcons(player).getLocked();
-            }
+                ItemStack locked = RPGProfiles.getIcons(player).getLocked();
+                List<String> loreList = locked.getItemMeta().hasLore() ? locked.getItemMeta().getLore() : new ArrayList<String>();
+
+                loreList.add(0,RPGProfiles.getMessage(player,"click.locked","&eRequires additional permissions!"));
+                locked.getItemMeta().setLore(loreList);
+                icon = locked;            }
         }
         return icon;
     }

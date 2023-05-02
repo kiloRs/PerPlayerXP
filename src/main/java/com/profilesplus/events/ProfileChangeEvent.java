@@ -4,48 +4,32 @@ import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
 import lombok.Getter;
 import lombok.Setter;
-import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
-import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 @Getter
-public class ProfileChangeEvent extends Event implements Cancellable {
+public class ProfileChangeEvent extends PlayerDataEvent implements Cancellable {
     private static final HandlerList handlers = new HandlerList();
-
-    private final Player player;
     @Nullable
     private final Profile oldProfile;
-    private final PlayerData playerData;
     @Setter
     @NotNull(value = "Empty Profile Error")
     private Profile newProfile;
+    private final boolean fresh;
     @Setter
     private boolean cancelled;
-    private String settings;
 
-    public ProfileChangeEvent(PlayerData player,@Nullable Profile oldProfile, Profile newProfile) {
-        this.player = player.getPlayer();
-        this.playerData = player;
+    public ProfileChangeEvent(PlayerData player, @Nullable Profile oldProfile, Profile newProfile, boolean fresh) {
+        super(player.getPlayer());
         this.oldProfile = oldProfile;
         this.newProfile = newProfile;
+        this.fresh = fresh;
         this.cancelled = false;
-        this.settings = null;
     }
 
-    public ProfileChangeEvent(PlayerData player, Profile oldProfile, Profile newProfile, String isNew) {
-        this.player = player.getPlayer();
-        this.playerData = player;
-        this.oldProfile = oldProfile;
-        this.newProfile = newProfile;
-        this.settings = isNew;
-        this.cancelled = false;    }
 
-    public Player getPlayer() {
-        return player;
-    }
 
     public boolean hasOldProfile() {
         return oldProfile != null;
@@ -62,7 +46,4 @@ public class ProfileChangeEvent extends Event implements Cancellable {
         return handlers;
     }
 
-    public String getSettings() {
-        return settings;
-    }
 }

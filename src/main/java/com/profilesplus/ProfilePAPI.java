@@ -5,6 +5,7 @@ import com.profilesplus.players.Profile;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import net.Indyuce.mmocore.MMOCore;
 import net.Indyuce.mmocore.api.player.attribute.PlayerAttribute;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -39,13 +40,30 @@ public class ProfilePAPI extends PlaceholderExpansion {
         // Split the identifier by '_'
         String[] parts = identifier.split("_");
 
+        PlayerData playerData = PlayerData.get(player.getUniqueId());
+        if (parts.length == 2 && !NumberUtils.isDigits(parts[0])){
+            String active = parts[0];
+            if (active.equalsIgnoreCase("active")){
+                return String.valueOf(playerData.getProfileStorage().getActiveProfile().getIndex());
+            }
+        }
         if (parts.length == 2){
             int slot = Integer.parseInt(parts[0]);
             String exists = parts[1];
-
             if ("exists".equalsIgnoreCase(exists)) {
-                Profile profile = PlayerData.get(player.getUniqueId()).getProfiles().get(slot);
+                Profile profile = playerData.getProfileStorage().get(slot);
                 return profile != null && profile.isCreated() ? "True" : "False";
+            }
+            else if ("name".equalsIgnoreCase(exists)){
+                Profile profile = playerData.getProfileStorage().get(slot);
+                return profile.getId();
+            }
+            else if ("index".equalsIgnoreCase(exists)){
+                Profile profile = playerData.getProfileStorage().get(slot);
+                return String.valueOf(profile.getIndex());
+            }
+            else if ("active".equalsIgnoreCase(exists)){
+                return playerData.getProfileStorage().hasActiveProfile() && playerData.getProfileStorage().isActiveProfile(slot)?"True":"False";
             }
             return null;
         }
@@ -61,8 +79,7 @@ public class ProfilePAPI extends PlaceholderExpansion {
         String statOrAttribute = parts[2];
 
         // Get player profile by slot
-        PlayerData playerData = PlayerData.get(player.getUniqueId());
-        Profile profile = playerData.getProfiles().get(slot);
+        Profile profile = playerData.getProfileStorage().get(slot);
         if (profile == null) {
             return null;
         }
@@ -71,7 +88,7 @@ public class ProfilePAPI extends PlaceholderExpansion {
         if ("attributes".equals(statType)) {
             // Get the attribute level
             for (PlayerAttribute playerAttribute : MMOCore.plugin.attributeManager.getAll()) {
-                if (playerAttribute.getId().toString().equalsIgnoreCase(statOrAttribute)) {
+                if (playerAttribute.getId().equalsIgnoreCase(statOrAttribute)) {
                     return Integer.toString(profile.getClassInformation().getAttributeLevel(playerAttribute.getId()));
                 }
             }

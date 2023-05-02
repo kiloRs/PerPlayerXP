@@ -12,7 +12,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
@@ -30,7 +29,7 @@ public class NameInput implements Listener {
         this.previousMenu = previousMenu;
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerChat(AsyncChatEvent event) {
         if (event.getPlayer().getUniqueId().equals(player.getUniqueId()) && event.getPlayer().hasMetadata("textInput") || previousMenu != null && previousMenu.isInput()) {
             String input = event.signedMessage().message();
@@ -43,26 +42,18 @@ public class NameInput implements Listener {
                 if (!isValidName(input)) {
                     return;
                 } else {
-                    new BukkitRunnable(){
-                        @Override
-                        public void run() {
-                            TextInputEvent event = new TextInputEvent(player, input);
-                            Bukkit.getPluginManager().callEvent(event);
+                            TextInputEvent inputEvent = new TextInputEvent(player, input);
+                            Bukkit.getPluginManager().callEvent(inputEvent);
 
-                            if (event.isCancelled()){
+                            if (inputEvent.isCancelled()){
                                 previousMenu.open();
-                                event.getPlayer().removeMetadata("textInput",RPGProfiles.getInstance());
-                                event.getPlayer().sendMessage(MythicLib.plugin.parseColors("&ePlease use another name! Not allowing: " + input.toUpperCase()));
+                                inputEvent.getPlayer().removeMetadata("textInput",RPGProfiles.getInstance());
+                                inputEvent.getPlayer().sendMessage(MythicLib.plugin.parseColors("&ePlease use another name! Not allowing: " + input.toUpperCase()));
                                 AsyncChatEvent.getHandlerList().unregister(NameInput.this);
                                 return;
                             }
-                            previousMenu.setProfileName(input);
-                            previousMenu.open();
-                            event.getPlayer().removeMetadata("textInput",RPGProfiles.getInstance());
-
-
-                        }
-                    }.runTask(RPGProfiles.getInstance());
+                            inputEvent.getPlayer().removeMetadata("textInput",RPGProfiles.getInstance());
+                    }
                 }
             }
             else {
@@ -71,23 +62,21 @@ public class NameInput implements Listener {
             }
             AsyncChatEvent.getHandlerList().unregister(this);
         }
-    }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onTextInput(TextInputEvent event) {
         if (event.getPlayer().getUniqueId().equals(player.getUniqueId()) && event.getPlayer().hasMetadata("textInput")) {
-            String input = event.getInput().toLowerCase();
+            String input = event.getText().toLowerCase();
 
-            if (RPGProfiles.isLogging()){
-                RPGProfiles.log("Text Input Event: " + event.getInput().toUpperCase());
-            }
             // Add more words to the list as needed
             List<String> cancelWords = Arrays.asList("cancel", "close", "end", "stop", "back", "exit");
-            if (RPGProfiles.getInstance().getConfig().isList("naming.stopWords")){
-                cancelWords = RPGProfiles.getInstance().getConfig().getStringList("naming.stopWords");
+            if (RPGProfiles.getInstance().getConfig().isList("profile.naming.cancel")){
+                cancelWords = RPGProfiles.getInstance().getConfig().getStringList("profile.naming.cancel");
+
             }
             if (cancelWords.contains(input.toLowerCase())) {
                 event.setCancelled(true);
+                return;
             }
         }
     }
@@ -97,14 +86,17 @@ public class NameInput implements Listener {
         if (e.isCancelled()){
             previousMenu.open();
             TextInputEvent.getHandlerList().unregister(this);
+
             return;
         }
-        if (!isValidName(e.getInput())){
+        if (!isValidName(e.getText())){
             return;
         }
-        previousMenu.setProfileName(e.getInput());
+        previousMenu.setProfileName(e.getText());
         previousMenu.open();
+//        TextInputEvent.getHandlerList().unregister(this);
         TextInputEvent.getHandlerList().unregister(this);
+
     }
 
     private boolean isValidName(String name) {

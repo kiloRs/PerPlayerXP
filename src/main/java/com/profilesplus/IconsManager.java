@@ -1,5 +1,6 @@
 package com.profilesplus;
 
+import com.profilesplus.players.PlayerData;
 import io.lumine.mythic.lib.MythicLib;
 import io.lumine.mythic.lib.api.explorer.ItemBuilder;
 import lombok.Getter;
@@ -9,6 +10,7 @@ import net.Indyuce.mmocore.api.player.profess.PlayerClass;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -107,5 +109,40 @@ public class IconsManager {
     }
     public boolean hasClassIcon(String id) {
         return RPGProfiles.getInstance().getConfig().isConfigurationSection("icons.classes." + id) && !RPGProfiles.getInstance().getConfig().getConfigurationSection("icons.classes." + id).getKeys(false).isEmpty();
+    }
+
+    public ItemStack getSlotIcon(int index) {
+        ConfigurationSection section;
+        if (!RPGProfiles.getInstance().getConfig().isConfigurationSection("icons.slots." + index)){
+          section = RPGProfiles.getInstance().getConfig().createSection("icons.slots." + index);
+        }
+        else {
+            section = RPGProfiles.getInstance().getConfig().getConfigurationSection("icons.slots." + index);
+        }
+
+        if (section == null){
+            throw new RuntimeException("ItemStack Icon for Slot: " + index + " error!");
+        }
+        List<String> lore = new ArrayList<>();
+        if (section.isList("lore")){
+            lore = section.getStringList("lore");
+        }
+        lore.replaceAll(s -> PlaceholderAPI.setPlaceholders(player,s));
+
+        String name = section.getString("name", "&a%profile_index% Slot").replace("%profile_index%", String.valueOf(index));
+        name = PlaceholderAPI.setPlaceholders(player,name);
+        int customNumber = section.getInt("customModel",0);
+        Material type = Material.matchMaterial(section.getString("material",getClassIcon(PlayerData.get(player).getProfileStorage().get(index).getClassName().toUpperCase()).getType().getKey().getKey()));
+
+        if (type == null){
+            type = Material.PAPER;
+        }
+
+        ItemBuilder builder = new ItemBuilder(type, MythicLib.plugin.parseColors(name));
+        if (!lore.isEmpty()){
+           builder = builder.setLore(lore.toArray(String[]::new));
+        }
+        builder.editMeta(itemMeta -> itemMeta.setCustomModelData(customNumber));
+        return builder.asQuantity(index);
     }
 }

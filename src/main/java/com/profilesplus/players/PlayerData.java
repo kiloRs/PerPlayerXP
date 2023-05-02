@@ -1,9 +1,9 @@
 package com.profilesplus.players;
 
-import com.profilesplus.LimboManager;
 import com.profilesplus.RPGProfiles;
 import com.profilesplus.events.ProfileChangeEvent;
 import com.profilesplus.events.ProfileCreateEvent;
+import com.profilesplus.events.ProfileRemoveEvent;
 import com.profilesplus.menu.CharSelectionMenu;
 import io.lumine.mythic.lib.api.player.MMOPlayerData;
 import lombok.Getter;
@@ -11,24 +11,22 @@ import net.Indyuce.mmocore.MMOCore;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.Bukkit;
-import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 
 @Getter
 public class PlayerData {
-    @Getter
-    private static final NamespacedKey ACTIVE_PROFILE_KEY = new NamespacedKey(RPGProfiles.getInstance(), "activeProfile");
     @Getter
     private static final Map<UUID, PlayerData> playerDataInstances = new HashMap<>();
 
@@ -37,91 +35,78 @@ public class PlayerData {
     private final MMOPlayerData mythicLib;
     private FileConfiguration config;
 
-    private final Map<Integer, Profile> profileMap = new HashMap<>();
-
     private final Player player;
-    private Profile activeProfile;
-    private DefaultData defaultData;
-    private int activeSlot;
-    @Getter
-    private static final String PERMISSION_PREFIX = "rpgprofiles.slot.";
+    private final ProfileStorage profileStorage;
+    private final ActiveKeyHolder keyHolder;
 
-    public PlayerData(Player player){
+    private final net.Indyuce.mmocore.api.player.PlayerData mmoCore;
+
+    public PlayerData(Player player) {
         this(player.getUniqueId());
     }
+
     private PlayerData(UUID uuid) {
         this.uuid = uuid;
         this.player = Bukkit.getOfflinePlayer(uuid).getPlayer();
-        if (player == null){
+        if (player == null) {
             throw new RuntimeException("Player error!");
         }
         this.playerFile = new File(getPlayerDataFolder(), uuid + ".yml");
 
         this.mythicLib = MMOPlayerData.get(uuid);
-        this.activeProfile = null;
-
+        this.profileStorage = new ProfileStorage(this);
         loadConfig();
 
-
-        Set<String> set = RPGProfiles.getDefaultPlayerConfig().getKeys(false);
-
-        boolean keyFounD = false;
-        if (!set.isEmpty()) {
-            for (String key : set) {
-                if (key.equalsIgnoreCase("DEFAULT")){
-                    keyFounD = true;
-                }
-                if (player.hasPermission(DefaultData.PERMISSION_PREFIX + key.toUpperCase())){
-                    defaultData = new DefaultData(key.toUpperCase());
-                }
-            }
-            if (getDefaultData() == null){
-                defaultData = DefaultData.get("DEFAULT");
-            }
+        this.mmoCore = net.Indyuce.mmocore.api.player.PlayerData.get(uuid);
+        this.keyHolder = new ActiveKeyHolder(this.player);
+        if (mmoCore == null) {
+            throw new RuntimeException("MMOCore failure!");
         }
 
-        if (hasActiveKey()){
-            if (getActiveKey() > 0) {
-                ConfigurationSection section = config.getConfigurationSection("profiles." + getActiveKey());
-                if (section != null){
+    }
+
+    public boolean loadActive() {
+        if (keyHolder.hasActive()) {
+            ConfigurationSection section = config.getConfigurationSection("profiles." + keyHolder.getActive());
+            if (section != null) {
                 String className = section.getString("className");
                 String id = section.getString("id");
-                if (config.isConfigurationSection("profiles." + getActiveKey()) && config.getKeys(false).size() > 0 && section != null && className != null && id != null){
-                    Profile profile = new Profile(id,className,getActiveKey(),uuid,true);
+                if (config.isConfigurationSection("profiles." + getKeyHolder().getActive()) && config.getKeys(false).size() > 0 && className != null && id != null) {
+                    Profile profile = new Profile(id, className, getKeyHolder().getActive(), uuid, true);
 
-                    profileMap.put(getActiveKey(),profile);
+                    profileStorage.putProfile(profile);
                     setActiveProfile(profile);
-                    return;
+                    return true;
                 }
-                }
-                return;
             }
-            player.getPersistentDataContainer().remove(ACTIVE_PROFILE_KEY);
+            initiateProfile();
+            return true;
         }
-
-        if (activeProfile == null){
-            RPGProfiles.log("No Profile for Player: " + player.getName());
-        }
-        activateProfile();
+        keyHolder.resetActive();
+        return false;
     }
 
-    private void activateProfile() {
-        if (activeProfile != null){
-            if (activeProfile.update()) {
-                player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, getActiveProfile().getIndex());
-                RPGProfiles.log("Profile Activation via Player! " + activeProfile.getIndex() + " " + activeProfile.getName() + " " + activeProfile.getClassName());
-            }
-            setLimbo(false);
-        }
-        else {
-            setLimbo(true);
+    private void initiateProfile() {
+        if (!profileStorage.hasActiveProfile()) {
             new CharSelectionMenu(this).open();
+        } else {
+            if (!profileStorage.getActiveProfile().isCreated()) {
+                RPGProfiles.getSavingManager().saveData(profileStorage.getActiveProfile(), false);
+                RPGProfiles.getSavingManager().saveInventory(profileStorage.getActiveProfile());
+            }
+            if (profileStorage.getActiveProfile().update(true)) {
+                RPGProfiles.log("Profile Activation Complete!");
+            }
         }
     }
+
 
     public static PlayerData get(UUID uuid) {
-        if (!playerDataInstances.containsKey(uuid)){
-            playerDataInstances.put(uuid,new PlayerData(uuid));
+        if (!playerDataInstances.containsKey(uuid)) {
+            if (!net.Indyuce.mmocore.api.player.PlayerData.has(uuid)) {
+                RPGProfiles.debug("MMOCore Player has not loaded!");
+            }
+            playerDataInstances.put(uuid, new PlayerData(uuid));
         }
 
         return playerDataInstances.get(uuid);
@@ -135,6 +120,10 @@ public class PlayerData {
         return playerDataInstances.values().toArray(new PlayerData[0]);
     }
 
+    public static boolean exists(Player p) {
+        return PlayerData.getPlayerDataInstances().containsKey(p.getUniqueId());
+    }
+
     public void saveConfig() {
         try {
             config.save(playerFile);
@@ -145,7 +134,7 @@ public class PlayerData {
 
     private void loadConfig() {
         if (!playerFile.exists() || !playerFile.isFile()) {
-            if (!playerFile.getParentFile().exists()){
+            if (!playerFile.getParentFile().exists()) {
                 playerFile.getParentFile().mkdirs();
             }
             try {
@@ -165,17 +154,63 @@ public class PlayerData {
         return dataFolder;
     }
 
-    public void saveActiveProfile( boolean fromPlayer){
-        activeProfile.saveToConfigurationSection(fromPlayer);
+    public void saveActiveProfile(boolean fromPlayer) {
+        if (profileStorage.hasActiveProfile())
+            RPGProfiles.getSavingManager().saveData(profileStorage.getActiveProfile(), fromPlayer);
+//        activeProfile.saveToConfigurationSection(fromPlayer);
     }
-    public void saveProfiles() {
-        for (Profile profile : profileMap.values()) {
-            if (isActive(profile.getIndex())){
-                profile.saveToConfigurationSection(true);
-                player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, getActiveProfile().getIndex());
-                saveConfig();
+
+    public static Profile loadActive(Player player, int index) {
+        PlayerData playerData = PlayerData.get(player);
+        if (playerData.hasPermissionFor(index)) {
+            if (playerData.loadProfile(index)) {
+                RPGProfiles.log("Profile Reloaded: " + index);
+                playerData.setActiveProfile(index, !playerData.profileStorage.get(index).isCreated());
+                return playerData.profileStorage.getActiveProfile();
+            } else {
+                return null;
             }
         }
+        return null;
+    }
+
+    public void reload() {
+        loadConfig();
+        loadProfiles();
+
+
+        if (!keyHolder.hasActive()) {
+            RPGProfiles.debug("NO ACTIVE KEY FOR PLAYER: " + player.getName().toUpperCase());
+            return;
+        }
+        if (profileStorage.isEmpty()){
+            RPGProfiles.debug("NO PROFILES FOR PLAYER: " + player.getName().toUpperCase());
+        }
+        Profile profile = loadActive(player, getKeyHolder().getActive());
+
+        if (profile != null) {
+            profile.reload();
+            RPGProfiles.log("Successfully Reloaded Profile: " + profile.getId() + " [" + profile.getIndex() + "]");
+        } else {
+            RPGProfiles.log("No Active Profile to Reload for: " + player.getName().toUpperCase());
+        }
+    }
+
+    public void close() {
+        if (profileStorage.hasActiveProfile()) {
+            this.saveActiveProfile(profileStorage.getActiveProfile().isCreated());
+
+            if (keyHolder.hasActive()){
+                if (keyHolder.getActive() != profileStorage.getActiveProfile().getIndex()){
+                    keyHolder.setActive(profileStorage.getActiveProfile());
+                }
+            }
+            else {
+                keyHolder.setActive(profileStorage.getActiveProfile());
+            }
+            return;
+        }
+        RPGProfiles.log("No Playerdata Close for " + player.getName() + " because no active profile was found!");
     }
 
     public void loadProfiles() {
@@ -184,26 +219,34 @@ public class PlayerData {
             for (String slotString : profilesSection.getKeys(false)) {
                 int slot = Integer.parseInt(slotString);
                 if (loadProfile(slot)) {
-                    RPGProfiles.debug("Profile ! ! ! ! ! ! ! ! ! ! " + slot );
+                    RPGProfiles.debug("Profile ! ! ! ! ! ! ! ! ! ! " + slot);
                 }
             }
         }
 
-        int activeSlot = player.getPersistentDataContainer().has(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER)?player.getPersistentDataContainer().get(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER):-1;
+//        int activeSlot = player.getPersistentDataContainer().has(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER)?player.getPersistentDataContainer().get(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER):-1;
+//
+//        if (activeSlot > 0 && profileMap.containsKey(activeSlot)) {
+//            setActiveProfile(profileMap.get(activeSlot));
+//            return;
+//        }
+//        if (activeSlot > 0){
+//            if (loadProfile(activeSlot)) {
+//                RPGProfiles.log("Profile Initiate: " + activeSlot);
+//            }
+//            if (profileMap.containsKey(activeSlot)){
+//                setActiveProfile(profileMap.get(activeSlot));
+//            }
+//        }
 
-        if (activeSlot > 0 && profileMap.containsKey(activeSlot)) {
-            setActiveProfile(profileMap.get(activeSlot));
+        if (loadActive()) {
+            RPGProfiles.debug("Active Load");
             return;
         }
-        if (activeSlot > 0){
-            if (loadProfile(activeSlot)) {
-                RPGProfiles.log("Profile Initiate: " + activeSlot);
-            }
-            if (profileMap.containsKey(activeSlot)){
-                setActiveProfile(profileMap.get(activeSlot));
-            }
-        }
+        RPGProfiles.debug("Active Not Loaded!");
+
     }
+
     public boolean loadProfile(int x) {
         ConfigurationSection profilesSection = config.getConfigurationSection("profiles");
         if (profilesSection != null) {
@@ -213,7 +256,7 @@ public class PlayerData {
                 String className = profilesSection.getString(slotString + ".className");
                 if (displayName != null && className != null && !displayName.isEmpty() && !className.isEmpty() && MMOCore.plugin.classManager.has(className)) {
                     Profile profile = new Profile(displayName, className, x, uuid, true);
-                    profileMap.put(x, profile);
+                    profileStorage.putProfile(profile);
                     return true;
                 } else if (className != null && !MMOCore.plugin.classManager.has(className.toUpperCase())) {
                     RPGProfiles.log("Error: Profile " + x + " of " + displayName + " of player: " + player.getName() + " has a broken class name!");
@@ -225,7 +268,7 @@ public class PlayerData {
         return false;
     }
 
-    public void createNewProfile(String displayName, String className , boolean activate) {
+    public void createNewProfile(String displayName, String className, boolean activate) {
         int maxSlots = 15;
         int availableSlot = -1;
 
@@ -233,7 +276,7 @@ public class PlayerData {
         for (int i = 0; i < maxSlots; i++) {
             boolean slotOccupied = false;
 
-            for (Profile profile : profileMap.values()) {
+            for (Profile profile : profileStorage.getAll()) {
                 if (profile.getIndex() == i) {
                     slotOccupied = true;
                     break;
@@ -253,172 +296,125 @@ public class PlayerData {
             return;
         }
 
-        Profile newProfile = new Profile(displayName, className, availableSlot,uuid,false);
+        Profile newProfile = new Profile(displayName, className, availableSlot, uuid, false);
 
-        ProfileCreateEvent event = new ProfileCreateEvent(this, newProfile,activate, false);
+        ProfileCreateEvent event = new ProfileCreateEvent(this, newProfile, activate, false);
         Bukkit.getPluginManager().callEvent(event);
 
     }
+
+    public boolean hasPermissionFor(int slotNumber) {
+        return player.hasPermission("rpgprofiles.slots." + slotNumber) || slotNumber > 0 && slotNumber < 6;
+    }
+
     public void createNewProfileInSlot(String displayName, String className, boolean activate, int slot, boolean over) {
         if (slot < 1 || slot > 15) {
-            player.sendMessage("Invalid slot number.");
-            return;
+            throw new RuntimeException("Invalid Slot Use Number from Creating Profile Menu");
         }
 
-        if (slot >= 5 && !player.hasPermission(PERMISSION_PREFIX + slot)) {
+        if (hasPermissionFor(slot)) {
             player.sendMessage("You don't have permission to create a profile in this slot.");
             return;
         }
 
-        for (Profile profile : profileMap.values()) {
+        for (Profile profile : profileStorage.getAll()) {
             if (profile.getIndex() == slot && !over) {
                 player.sendMessage("This slot is already occupied.");
                 return;
             }
         }
 
-        Profile newProfile = new Profile(displayName, className,slot,uuid,false);
+        Profile newProfile = new Profile(displayName, className, slot, uuid, false);
 
         ProfileCreateEvent event = new ProfileCreateEvent(this, newProfile, activate, over);
         Bukkit.getPluginManager().callEvent(event);
 
     }
 
-    public void setActiveProfile(Profile profile){
-        this.setActiveProfile(profile.getIndex(),null);
+    public void setActiveProfile(Profile profile) {
+        this.setActiveProfile(profile.getIndex(), !profile.isFromFile());
     }
-    public void setActiveProfile(int newSlot, String settingsName) {
-        if (activeProfile != null) {
-            activeProfile.saveToConfigurationSection(true);
+
+    public void setActiveProfile(int newSlot, boolean fresh) {
+        if (profileStorage.hasActiveProfile() && profileStorage.getActiveProfile().getIndex() != newSlot) {
+            RPGProfiles.getSavingManager().saveInventory(profileStorage.getActiveProfile());
+            RPGProfiles.getSavingManager().saveData(profileStorage.getActiveProfile(), !fresh);
+            profileStorage.getActiveProfile().getInternalPlayer().getPlayer().getInventory().clear();
+            profileStorage.getActiveProfile().setCreated(true);
+        } else if (profileStorage.getActiveProfile() != null) {
+            RPGProfiles.getSavingManager().saveData(profileStorage.getActiveProfile(), !fresh);
+            RPGProfiles.getSavingManager().saveInventory(profileStorage.getActiveProfile());
+            return;
         }
 
-        if (profileMap.containsKey(newSlot)) {
+        if (profileStorage.hasProfile(newSlot)) {
             // Load the new profile's inventory from the database
-            Profile newProfile = profileMap.get(newSlot);
+            Profile newProfile = profileStorage.get(newSlot);
             if (newProfile != null) {
-                this.activeProfile = newProfile;
-                this.activeSlot = newSlot;
-                player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, getActiveProfile().getIndex());
-                player.saveData();
-
-
-
-
-                if (activeProfile.update()){
-                    player.getPersistentDataContainer().set(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER,activeSlot);
-
-                    if (activeProfile.hasSavedInventory()) {
-                        activeProfile.loadInventory();
-                    }
-                    else {
-                        RPGProfiles.debug("No Inventory Save for " + activeProfile.getIndex());
-                    }
-                    RPGProfiles.debug("Active Profile Updated from setActiveProfile(" + activeProfile.getIndex() +  ")");
+                this.profileStorage.setActiveProfile(newProfile);
+                if (profileStorage.getActiveProfile().update(true)) {
+                    RPGProfiles.debug("Loaded Profile: " + profileStorage.getActiveProfile().getId());
+                } else {
+                    throw new RuntimeException("Save Load Order Error in Player");
                 }
-
-
-
-                activeProfile.saveToConfigurationSection(true,true,RPGProfiles.isUsingEconomy());
-                setLimbo(false);
-                return;
-            }
-            else {
-                RPGProfiles.log("Error: Profile is not save or register currently in " + player.getName() + " 's profile!");
-
-                if (profileMap.isEmpty() || activeProfile == null){
-                    setLimbo(activeProfile==null);
-                }
-                return;
+            } else {
+                throw new RuntimeException("Unregistered Profile Error");
             }
         }
-        RPGProfiles.log("Profile in slot: " + newSlot + " not available to be activeProfile of " + player.getName());
-    }
-
-    public void setLimbo(boolean limbo) {
-
-        LimboManager m = RPGProfiles.getLimboManager();
-        if (limbo) {
-            m.setWaiting(player,m.hasOriginalLocation(player)?m.getOriginalLocation(player):player.getLocation().toBlockLocation()==m.getSpectatorLocation().toBlockLocation()?null:player.getLocation().toBlockLocation());
-            player.sendMessage(RPGProfiles.getMessage(player,"limbo.enter","&eYou have been placed into Limbo mode! Please select or create a profile (/profiles)"));
-        }
-        else {
-            m.removeWaiting(player);
-            player.sendMessage(RPGProfiles.getMessage(player,"limbo.exit","&eYou have been taken out of Limbo mode!"));
-        }
-    }
-
-
-    /**
-     * @return Unmodifiable Map of Profiles
-     */
-    public Map<Integer, Profile> getProfiles() {
-        return Collections.unmodifiableMap(profileMap);
     }
 
 
     public int findFirstAvailableProfileSlot() {
         for (int i = 0; i < 15; i++) {
-            if (!this.getProfileMap().containsKey(i)) {
-                if (i <= 5 || this.getPlayer().hasPermission(PERMISSION_PREFIX + i + 1)) {
-                    return i + 1;
+            int number = i + 1;
+
+            if (!this.profileStorage.hasProfile(i + 1)) {
+                if (hasPermissionFor(number)) {
+                    return number;
                 }
             }
         }
         return -1; // Return -1 if no available slot is found
     }
-    public boolean changeProfile(@NotNull(value = "Empty Profile Error!") Profile newProfile, @Nullable String settings) {
-        @Nullable Profile oldProfile = getActiveProfile();
+
+    public boolean changeProfile(@NotNull(value = "Empty Profile Error!") Profile newProfile, boolean fresh) {
+        @Nullable Profile oldProfile = getProfileStorage().getActiveProfile();
 
 
-        if (oldProfile!= null)
-            oldProfile.saveToConfigurationSection(true);
+        if (oldProfile != null)
+            RPGProfiles.getSavingManager().saveData(oldProfile, true);
 
-        if (!newProfile.hasSaveInConfig()){
-            if (settings == null){
-                settings = DefaultData.defaultData.getI().toUpperCase();
-            }
-        }
         // Fire the ProfileChangeEvent
-        ProfileChangeEvent profileChangeEvent = new ProfileChangeEvent(PlayerData.get(player), oldProfile, newProfile, settings);
+        ProfileChangeEvent profileChangeEvent = new ProfileChangeEvent(PlayerData.get(player), oldProfile, newProfile, fresh);
         Bukkit.getServer().getPluginManager().callEvent(profileChangeEvent);
 
         // Check if the event was cancelled or a new profile was set
         if (!profileChangeEvent.isCancelled()) {
-            setActiveProfile(profileChangeEvent.getNewProfile().getIndex(),profileChangeEvent.getSettings());
+            setActiveProfile(profileChangeEvent.getNewProfile().getIndex(), fresh);
             return true;
-       }
-        else {
+        } else {
             RPGProfiles.debug("The profile change event was stopped! Please check into this!");
         }
         return false;
     }
 
     public boolean removeProfile(Profile profile) {
-        if (!profileMap.containsValue(profile)){
+        if (!getProfileStorage().hasProfile((profile))) {
             return false;
         }
-        if (activeSlot == profile.getIndex()){
+        ProfileRemoveEvent event = new ProfileRemoveEvent(profile);
+        Bukkit.getPluginManager().callEvent(event);
+
+        if (event.isCancelled()) {
             return false;
         }
-        int number = profile.getIndex();
-        getProfileMap().remove(number);
-        config.set("profiles." + number,null);
+        int number = event.getProfile().getIndex();
+        profileStorage.remove(number);
+        PlayerData.get(event.getPlayer()).config.set("profiles." + number, null);
         profile = null;
         return true;
     }
 
-    public boolean isActive(int index) {
-        return activeSlot==index&& activeProfile!=null && profileMap.containsKey(index) && activeProfile == profileMap.get(index);
-    }
-
-    public int getActiveKey(){
-
-        return player.getPersistentDataContainer().getOrDefault(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, 0);
-    }
-    public boolean hasActiveKey(){
-        Integer integer = player.getPersistentDataContainer().getOrDefault(ACTIVE_PROFILE_KEY, PersistentDataType.INTEGER, 0);
-        return player.getPersistentDataContainer().has(ACTIVE_PROFILE_KEY,PersistentDataType.INTEGER) && integer.intValue()>0;
-    }
 
     @Override
     public boolean equals(Object o) {
@@ -426,13 +422,18 @@ public class PlayerData {
 
         if (!(o instanceof PlayerData that)) return false;
 
-        return new EqualsBuilder().append(getActiveSlot(), that.getActiveSlot()).append(getUuid(), that.getUuid()).append(getPlayerFile(), that.getPlayerFile()).append(getProfileMap(), that.getProfileMap()).append(getActiveProfile(), that.getActiveProfile()).isEquals();
+        return new EqualsBuilder().append(getUuid(), that.getUuid()).append(getPlayer(), that.getPlayer()).append(profileStorage, that.profileStorage).isEquals();
     }
 
     @Override
     public int hashCode() {
-        return new HashCodeBuilder(17, 37).append(getUuid()).append(getPlayerFile()).append(getProfileMap()).append(getActiveProfile()).append(getActiveSlot()).toHashCode();
+        return new HashCodeBuilder(17, 37).append(getUuid()).append(profileStorage).toHashCode();
     }
 
-
+    public boolean canChangeProfiles() {
+        if (RPGProfiles.getLimboManager().isWaiting(player)) {
+            return true;
+        }
+        return mmoCore.isInCombat() || mmoCore.isCasting() || player.isFlying() || player.isSleeping() || player.isDead();
+    }
 }

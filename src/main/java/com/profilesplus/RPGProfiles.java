@@ -1,14 +1,12 @@
 package com.profilesplus;
 
-import com.profilesplus.commands.DeleteProfilesCommand;
-import com.profilesplus.commands.ProfileCreateCommand;
-import com.profilesplus.commands.ProfilesCommand;
-import com.profilesplus.commands.SaveCommand;
+import com.profilesplus.commands.*;
+import com.profilesplus.configs.ProfileConfigManager;
+import com.profilesplus.configs.StatHandler;
 import com.profilesplus.listeners.*;
-import com.profilesplus.listeners.text.ProfileConfigManager;
-import com.profilesplus.players.DefaultData;
 import com.profilesplus.players.PlayerData;
 import com.profilesplus.saving.InventoryManager;
+import com.profilesplus.saving.ProfileSavingManager;
 import io.lumine.mythic.lib.MythicLib;
 import lombok.Getter;
 import me.clip.placeholderapi.PlaceholderAPI;
@@ -31,36 +29,37 @@ import java.util.logging.Logger;
 public final class RPGProfiles extends JavaPlugin {
     @Getter
     private static Plugin instance;
+    @Getter
     private static ProfileConfigManager profileConfigManager;
+
     @Getter
     private static LimboManager limboManager;
-    public static Economy economy;
+    @Getter
+    private static Economy economy;
     @Getter
     private static boolean usingEconomy = false;
-
+    @Getter
     private static FileConfiguration messagesConfig;
     @Getter
     private static YamlConfiguration defaultPlayerConfig;
-    private File defaultPlayerFile;
+    @Getter
+    private static StatHandler statHandler;
+    @Getter
+    private static ProfileSavingManager savingManager;
+    private static File defaultPlayerFile;
+
 
     public void createDefaultPlayerConfig() {
-        defaultPlayerFile = new File(getDataFolder(), "defaultPlayer.yml");
+        defaultPlayerFile = new File(getDataFolder(), "defaultClassValues.yml");
         if (!defaultPlayerFile.exists()) {
-            saveResource("defaultPlayer.yml", false);
+            saveResource("defaultClassValues.yml", false);
         }
         defaultPlayerConfig = YamlConfiguration.loadConfiguration(defaultPlayerFile);
         if (defaultPlayerConfig.getKeys(false).isEmpty()){
-            saveResource("defaultPlayer.yml",true);
+            saveResource("defaultClassValues.yml",true);
         }
         defaultPlayerConfig = YamlConfiguration.loadConfiguration(defaultPlayerFile);
 
-        for (String key : defaultPlayerConfig.getKeys(false)) {
-            DefaultData defaultData = DefaultData.get(key);
-
-            if (defaultData.exists()){
-                RPGProfiles.log("Loading default data of " + key.toUpperCase());
-            }
-        }
 
     }
 
@@ -77,9 +76,6 @@ public final class RPGProfiles extends JavaPlugin {
 
     }
 
-    public static ProfileConfigManager getProfileConfigManager() {
-        return profileConfigManager;
-    }
     private static String parsePlaceholder(Player player,String message) {
         String replace = message.replace("%naming_max_length%", String.valueOf(profileConfigManager.getMaxNameLength()))
                 .replace("%naming_min_length%", String.valueOf(profileConfigManager.getMinNameLength()));
@@ -103,9 +99,12 @@ public final class RPGProfiles extends JavaPlugin {
 
         createDefaultPlayerConfig();
 
+        saveDefaultConfig();
+
+        savingManager = new ProfileSavingManager();
+        statHandler = new StatHandler(this);
         limboManager = new LimboManager(this);
 
-        saveDefaultConfig();
 
         profileConfigManager = new ProfileConfigManager(this);
 
@@ -132,6 +131,7 @@ public final class RPGProfiles extends JavaPlugin {
         PluginCommand create = Bukkit.getPluginCommand("createProfile");
         PluginCommand remove = Bukkit.getPluginCommand("removeProfile");
         PluginCommand save = Bukkit.getPluginCommand("saveProfiles");
+        PluginCommand reload = Bukkit.getPluginCommand("rpgprofiles");
         if (profiles != null){
             profiles.setExecutor(new ProfilesCommand(this));
         }
@@ -144,12 +144,14 @@ public final class RPGProfiles extends JavaPlugin {
         if (save != null){
             save.setExecutor(new SaveCommand());
         }
+        if (reload != null){
+            reload.setExecutor(new ReloadCommand());
+        }
     }
     public static InventoryManager getInventoryManager(){
         return new InventoryManager("inventories.db");
     }
     private void registerListeners() {
-        Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this),this);
         Bukkit.getPluginManager().registerEvents(new PlayerMoveRestrict(limboManager),this);
         Bukkit.getPluginManager().registerEvents(new InventoryListener(),this);
         Bukkit.getPluginManager().registerEvents(new ProfileListener(),this);
@@ -177,10 +179,10 @@ public final class RPGProfiles extends JavaPlugin {
     @Override
     public void onDisable() {
         Logger.getLogger("Minecraft").severe("Saving all Player files for RPGProfiles!");
-        for (PlayerData allInstance : PlayerData.getAllInstances()) {
-            allInstance.saveProfiles();
-        }
-        Logger.getLogger("Minecraft").severe("Complete Saving all Player files for RPGProfiles!");
+
+        PlayerData.getPlayerDataInstances().forEach((uuid, playerData) -> {
+            playerData.close();
+        });
 
         getInventoryManager().close();
     }

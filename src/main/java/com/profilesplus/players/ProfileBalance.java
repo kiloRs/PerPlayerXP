@@ -25,17 +25,20 @@ public class ProfileBalance {
 
 
     public double getCurrentFromEconomy(){
-        return RPGProfiles.economy.getBalance(profile.getInternalPlayer().getPlayer());
+        return RPGProfiles.getEconomy().getBalance(profile.getInternalPlayer().getPlayer());
     }
     public double loadBalance() {
         if (RPGProfiles.isUsingEconomy()) {
             if (profile.getSection().isDouble("balance")) {
-                return profile.getSection().getDouble("balance");
+                return balance = profile.getSection().getDouble("balance");
             } else {
-                return RPGProfiles.getInstance().getConfig().getDouble("default_balance", 0);
+                if (profile.isLoaded()) {
+                    saveBalance(true);
+                    return balance;
+                }
             }
         }
-        return 0;
+        return balance = 0;
     }
 
     @Override
@@ -50,5 +53,9 @@ public class ProfileBalance {
     @Override
     public int hashCode() {
         return new HashCodeBuilder(17, 37).append(profile).toHashCode();
+    }
+
+    public void reload() {
+        this.balance = loadBalance();
     }
 }

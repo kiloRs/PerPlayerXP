@@ -3,8 +3,10 @@ package com.profilesplus.listeners;
 import com.profilesplus.RPGProfiles;
 import com.profilesplus.events.ProfileChangeEvent;
 import com.profilesplus.events.ProfileCreateEvent;
+import com.profilesplus.players.PlayerData;
 import com.profilesplus.players.Profile;
 import me.clip.placeholderapi.PlaceholderAPI;
+import net.Indyuce.mmocore.api.event.PlayerChangeClassEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -21,36 +23,32 @@ public class ProfileListener implements Listener {
         else {
             RPGProfiles.debug("Profile being created will not activate!");
         }
+
     }
     @EventHandler(priority = EventPriority.LOWEST,ignoreCancelled = true)
     public void onProfileCreate(ProfileCreateEvent event){
         if (event.isOverride()) {
-            event.getPlayerData().getProfileMap().put(event.getProfile().getIndex(), event.getProfile());
+            event.getPlayerData().getProfileStorage().putProfile( event.getProfile());
         }
         else {
-            event.getPlayerData().getProfileMap().putIfAbsent(event.getProfile().getIndex(),event.getProfile());
+            if (!event.getPlayerData().getProfileStorage().hasProfile(event.getProfile().getIndex())) {
+                event.getPlayerData().getProfileStorage().putProfile(event.getProfile());
+            }
+        }
+        if (event.getProfile().isCreated()){
+            RPGProfiles.debug("Profile exists in Map prior to Creation Event ERROR! SOMETHING IS WRONG!");
+            return;
+        }
+        if (!event.getPlayer().getInventory().isEmpty()){
+            event.getPlayer().getInventory().clear();
         }
 
-        if (event.isActivate() || event.getPlayerData().getProfiles().size() == 1) {
-            String perm = event.getPerm();
-
-            if (!event.getProfile().hasSaveInConfig()) {
-                if (!event.getPlayerData().changeProfile(event.getProfile(), perm)) {
-                    RPGProfiles.debug("Change Profile Failure!");
-                }
-
-                RPGProfiles.debug("Profile Successfully Changed and Registered! [" + event.getProfile().getName() + "]");
-
-                if (RPGProfiles.getLimboManager().isWaiting(event.getPlayer())) {
-                    event.getPlayerData().setLimbo(false);
-
-                }
+        if (event.isActivate() || event.getPlayerData().getProfileStorage().getAll().size() == 1) {
+            boolean fresh = true;
+            if (!event.getPlayerData().changeProfile(event.getProfile(),fresh)){
+                return;
             }
-
-            if (event.getPlayerData().isActive(event.getProfile().getIndex())) {
-                event.getPlayer().sendMessage("Profile Active: " + event.getProfile().getIndex());
-            }
-            if (event.getPlayerData().getProfiles().containsValue(event.getProfile())) {
+            if (event.getPlayerData().getProfileStorage().hasProfile(event.getProfile())) {
                 event.getPlayer().sendMessage(RPGProfiles.getMessage(event.getPlayer(), "profile.create.successful", "&aProfile was created successfully!"));
             }
 
@@ -58,16 +56,23 @@ public class ProfileListener implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onClass(PlayerChangeClassEvent event){
+        if (PlayerData.get(event.getPlayer()) != null){
+            event.setCancelled(true);
+            event.getPlayer().sendMessage(RPGProfiles.getMessage("forbidden.mmocore.classes","&cClass Selection Via MMOCore is not allowed!"));
+        }
+    }
     @EventHandler(priority = EventPriority.LOWEST)
     public void onProfileChange(ProfileChangeEvent event) {
         Player player = event.getPlayer();
         Profile oldProfile = event.getOldProfile();
         Profile newProfile = event.getNewProfile();
 
-        if (event.getPlayerData().isActive(newProfile.getIndex())) {
+        if (event.getPlayerData().getProfileStorage().isActiveProfile(newProfile.getIndex())) {
             return;
         }
-        if (!event.getPlayerData().getProfiles().containsKey(newProfile.getIndex())){
+        if (!event.getPlayerData().getProfileStorage().hasProfile((newProfile.getIndex()))){
             event.setCancelled(true);
             RPGProfiles.log("Profile is not existing for player: " + player.getName() + " as " + newProfile.getIndex());
             return;
@@ -76,31 +81,27 @@ public class ProfileListener implements Listener {
         if (event.isCancelled()){
             return;
         }
-
-        if (RPGProfiles.isLogging()){
-            RPGProfiles.log("Assigning New Profile for " + player.getName());
-        }
         if (event.hasOldProfile()){
             assert oldProfile != null;
-            if (RPGProfiles.isLogging()){
-                RPGProfiles.log("Old: " + oldProfile.getId() + " " + oldProfile.getIndex());
-            }
-            oldProfile.saveToConfigurationSection(true);
-        }
-        if (RPGProfiles.isLogging()){
-            RPGProfiles.log("New: " + newProfile.getId() + " " + newProfile.getIndex());
+            PlayerData.get(event.getPlayer()).saveActiveProfile(true);
         }
 
-        newProfile.saveToConfigurationSection(false);
-
-        if (RPGProfiles.getProfileConfigManager().hasCommands()) {
-            for (String command : RPGProfiles.getProfileConfigManager().getCommands()) {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), PlaceholderAPI.setPlaceholders(player, command));
+        if (event.isFresh()) {
+            if (RPGProfiles.getProfileConfigManager().hasCommands()) {
+                for (String command : RPGProfiles.getProfileConfigManager().getCommands()) {
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), PlaceholderAPI.setPlaceholders(player, command));
+                }
+                RPGProfiles.debug("Commands executed for Player: " + RPGProfiles.getProfileConfigManager().getCommands().size());
             }
-            RPGProfiles.debug("Commands executed for Player: " + RPGProfiles.getProfileConfigManager().getCommands().size());
-            return;
+            else {
+                RPGProfiles.debug("No Commands for Initializing Profile Found!");
+            }
         }
-        RPGProfiles.debug("NO Commands were found in Config.yml to execute from Profile!");
+
+        if (RPGProfiles.getLimboManager().isWaiting(player)){
+            RPGProfiles.getLimboManager().removeWaiting(player);
+        }
+        PlayerData.get(event.getPlayer()).saveActiveProfile(!event.isFresh());
     }
 
 }

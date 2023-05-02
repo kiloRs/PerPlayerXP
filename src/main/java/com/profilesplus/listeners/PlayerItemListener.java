@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
@@ -14,6 +15,7 @@ import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PlayerItemListener implements Listener {
@@ -50,7 +52,7 @@ public class PlayerItemListener implements Listener {
             event.setCancelled(true);
         }
     }
-        @EventHandler
+        @EventHandler(priority = EventPriority.LOW)
         public void onMythicMobDeath(MythicMobDeathEvent event) {
             if (!(event.getKiller() instanceof Player killer)) {
                 return;
@@ -59,14 +61,56 @@ public class PlayerItemListener implements Listener {
             long expiration = System.currentTimeMillis() + ownershipDuration;
 
             // Replace "event.getDrops()" with the method that provides the items dropped by the mob
-            for (ItemStack itemStack : event.getDrops()) {
-          
+            if (event.getDrops() == null || event.getDrops().isEmpty()){
+                return;
+            }
+            List<ItemStack> itemStackList = new ArrayList<>(event.getDrops());
+            for (ItemStack itemStack : itemStackList) {
+                if (itemStack == null){
+                    continue;
+                }
                 event.getDrops().remove(itemStack);
                 Item droppedItem = event.getEntity().getWorld().dropItemNaturally(event.getEntity().getLocation(), itemStack);
                 itemOwnerships.put(droppedItem, new ItemOwnership(killer.getUniqueId(), expiration));
             }
         }
 
+        @EventHandler
+        public void onEntity(EntityDeathEvent event){
+            List<ItemStack> drops = event.getDrops();
+            long expiration = System.currentTimeMillis() + ownershipDuration;
+
+            if (event.getEntity() instanceof Player player){
+                return;
+            }
+            if (event.getEntity().getKiller() == null){
+                return;
+            }
+            if (drops.isEmpty()){
+                return;
+            }
+
+            for (ItemStack drop : drops) {
+                Item item = event.getEntity().getLocation().getWorld().dropItem(event.getEntity().getLocation(),drop);
+                itemOwnerships.put(item,new ItemOwnership(event.getEntity().getKiller().getUniqueId(),expiration));
+            }
+
+        }
+//        @EventHandler
+//        public void onPlayer(PlayerDeathEvent event){
+//            List<ItemStack> drops = event.getDrops();
+//            long expiration = System.currentTimeMillis() + ownershipDuration;
+//
+//            if (drops.isEmpty()){
+//                return;
+//            }
+//
+//            for (ItemStack drop : drops) {
+//                Item item = event.getEntity().getLocation().getWorld().dropItem(event.getEntity().getLocation(),drop);
+//                itemOwnerships.put(item,new ItemOwnership(event.getPlayer().getUniqueId(),expiration));
+//            }
+//
+//        }
         @EventHandler
         public void onPlayerPickupItem(PlayerPickupItemEvent event) {
             Item item = event.getItem();

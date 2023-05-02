@@ -23,7 +23,7 @@ DEFAULT:
     yaw: 6.727048
     pitch: -6.5100465
   balance: 0.0
-TEN:
+WARRIOR:
   level: 10
   experience: 0
   skill-points: 10

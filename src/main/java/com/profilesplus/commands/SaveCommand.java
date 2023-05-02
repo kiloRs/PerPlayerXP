@@ -16,8 +16,13 @@ public class SaveCommand implements CommandExecutor {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!sender.isOp()){
             if (sender instanceof Player player){
-                PlayerData.get(player).saveProfiles();
-                sender.sendMessage("Profiles have been saved!");
+                if (sender.hasPermission("rpgprofiles.save")) {
+                    PlayerData.get(player).saveActiveProfile(true);
+                    sender.sendMessage("Profiles have been saved!");
+                    return true;
+                }
+
+                sender.sendMessage(MythicLib.plugin.parseColors("&eRequires Permission!"));
                 return true;
             }
             return false;
@@ -27,7 +32,9 @@ public class SaveCommand implements CommandExecutor {
             @Override
             public void run() {
                 PlayerData.getPlayerDataInstances().forEach((uuid, playerData) -> {
-                    playerData.saveProfiles();
+                    if (playerData.getProfileStorage().hasActiveProfile()) {
+                        playerData.saveActiveProfile(playerData.getProfileStorage().getActiveProfile().isCreated());
+                    }
                 });
             }
         }.runTask(RPGProfiles.getInstance());
@@ -42,7 +49,11 @@ public class SaveCommand implements CommandExecutor {
             }
             PlayerData playerData = PlayerData.get(player);
 
-            playerData.saveProfiles();
+            if (!playerData.getProfileStorage().hasActiveProfile()){
+                sender.sendMessage(MythicLib.plugin.parseColors("&cNo Profile Active for : " + player.getName()));
+                return true;
+            }
+            playerData.saveActiveProfile(playerData.getProfileStorage().getActiveProfile().isCreated());
             sender.sendMessage(MythicLib.plugin.parseColors("&aSaved Profiles of :" + player.getName()));
             return true;
         }

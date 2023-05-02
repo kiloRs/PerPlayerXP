@@ -1,5 +1,6 @@
 package com.profilesplus;
 
+import com.profilesplus.events.PlayerLimboEvent;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.*;
@@ -31,19 +32,32 @@ public class LimboManager {
             p.getPersistentDataContainer().set(locKey, LOCATION,originalLocation.toBlockLocation());
             p.saveData();
         }
-        waitFor(p);
+        PlayerLimboEvent event = new PlayerLimboEvent(true, p);
+        Bukkit.getPluginManager().callEvent(event);
+        if (event.isCancelled()){
+
+            return;
+        }
         spectatorWaitingModePlayers.add(p.getUniqueId());
+
+        waitFor(p);
     }
     public void removeWaiting(Player p){
         if (isWaiting(p)){
-            p.setGameMode(GameMode.SURVIVAL);
-            p.setFlySpeed(0.2f);
-            p.removeMetadata("waiting", RPGProfiles.getInstance());
-            spectatorWaitingModePlayers.remove(p.getUniqueId());
+            PlayerLimboEvent event = new PlayerLimboEvent(false, p);
+            Bukkit.getPluginManager().callEvent(event);
 
-            teleportToOriginalLocation(p);
-            p.getPersistentDataContainer().remove(locKey);
-            p.saveData();
+            if (event.isCancelled()){
+                return;
+            }
+            event.getPlayer().setGameMode(GameMode.SURVIVAL);
+            event.getPlayer().setFlySpeed(0.2f);
+            event.getPlayer().removeMetadata("waiting", RPGProfiles.getInstance());
+            spectatorWaitingModePlayers.remove(event.getPlayer().getUniqueId());
+
+            teleportToOriginalLocation(event.getPlayer());
+            event.getPlayer().getPersistentDataContainer().remove(locKey);
+            event.getPlayer().saveData();
             }
     }
 
@@ -108,6 +122,9 @@ public class LimboManager {
         return player.getPersistentDataContainer().getOrDefault(locKey, LOCATION,player.getWorld().getSpawnLocation());
     }
     public void teleportToOriginalLocation(Player player){
+        if (getOriginalLocation(player) == null){
+            return;
+        }
         if (hasOriginalLocation(player)){
             player.teleport(getOriginalLocation(player), PlayerTeleportEvent.TeleportCause.PLUGIN);
             return;

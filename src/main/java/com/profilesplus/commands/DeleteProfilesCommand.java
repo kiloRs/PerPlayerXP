@@ -36,13 +36,20 @@ public class DeleteProfilesCommand implements CommandExecutor {
         }
         PlayerData playerData = PlayerData.get(player);
 
-        Profile profile = playerData.getProfiles().get(amount);
+        if (playerData.getProfileStorage().hasProfile(amount)) {
+            Profile profile = playerData.getProfileStorage().getProfile(amount);
 
-        if (profile == null){
-            sender.sendMessage("No Profile on "+ amount);
+            if (profile == null) {
+                sender.sendMessage("No Profile on " + amount);
+                return true;
+            }
+            new ProfileRemoveMenu(playerData, profile, null).open();
             return true;
         }
-        new ProfileRemoveMenu(playerData,profile,null).open();
-        return true;
+        else if (!playerData.getProfileStorage().hasProfile(amount)){
+            sender.sendMessage("Profile not found!");
+            return true;
+        }
+        return false;
     }
 }

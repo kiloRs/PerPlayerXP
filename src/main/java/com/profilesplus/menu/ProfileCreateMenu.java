@@ -27,17 +27,15 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
     private String profileName = null;
     private final int setClassTypeSlot;
     private final int setNameSlot;
-    private final PlayerData playerData;
     private boolean input = false;
 
 
-    public ProfileCreateMenu(PlayerData playerData, @Nullable CharSelectionMenu selectionMenu, HumanEntity externalPlayer){
+    public ProfileCreateMenu(@NotNull PlayerData playerData, @Nullable CharSelectionMenu selectionMenu,@Nullable HumanEntity externalPlayer){
         super(playerData.getPlayer(),"Profile Creation",27,"CREATE",externalPlayer);
 
         if (selectionMenu != null) {
             setPreviousMenu(selectionMenu);
         }
-        this.playerData = playerData;
         this.input = false;
 
         if (hasPreviousMenu()) {
@@ -75,7 +73,6 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
            if (!hasExternalViewer()) {
                playerData.getPlayer().sendMessage(getMessage("prompts.class", "&ePlease select your profile's class type!"));
             ClassSelectionMenu classSelectionMenu = new ClassSelectionMenu(playerData.getPlayer(), this);
-            close(CloseReason.CONFIRM);
             classSelectionMenu.open();
            }
            else {
@@ -88,14 +85,14 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
         // Set the "Set Name" slot and add the click listener
         setNameSlot = 14;
         setItem(setNameSlot, RPGProfiles.getIcons(getPlayerData().getPlayer()).getName(), event -> {
-            close(CloseReason.CONFIRM);
-            playerData.getPlayer().setMetadata("textInput",new FixedMetadataValue(RPGProfiles.getInstance(),true));
-            playerData.getPlayer().sendMessage(getMessage("prompts.name","&ePlease select your profile's name!"));
+            playerData.getPlayer().setMetadata("textInput", new FixedMetadataValue(RPGProfiles.getInstance(), true));
+            playerData.getPlayer().sendMessage(getMessage("prompts.name", "&ePlease select your profile's name!"));
 
             // Register the NameInput listener
             input = true;
-            NameInput nameInput = new NameInput( this);
-            Bukkit.getPluginManager().registerEvents(nameInput,RPGProfiles.getInstance());
+            NameInput nameInput = new NameInput(this);
+            Bukkit.getPluginManager().registerEvents(nameInput, RPGProfiles.getInstance());
+            close();
         });
     }
     public ProfileCreateMenu(PlayerData playerData,@Nullable CharSelectionMenu menu) {
@@ -105,7 +102,13 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
 
     @Override
     protected boolean canConfirm() {
-        return className != null && profileName != null && !profileName.isEmpty() && RPGProfiles.getProfileConfigManager().canUse(player,profileName,false) && !className.isEmpty() && MMOCore.plugin.classManager.has(className);
+        boolean changeProfiles = playerData.canChangeProfiles();
+        if (!changeProfiles){
+            String message = RPGProfiles.getMessage(playerData.getPlayer(), "prohibited.notify", "&aYou are prohibited from using this menu while &b(In Combat/Sleeping/Flying/Casting)");
+            playerData.getPlayer().sendMessage(message);
+            return false;
+        }
+        return className != null && profileName != null && !profileName.isEmpty() && RPGProfiles.getProfileConfigManager().canUse(player,profileName,false) && !className.isEmpty() && MMOCore.plugin.classManager.has(className) && changeProfiles;
     }
 
     @Override
@@ -123,10 +126,11 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
     @Override
     protected void onConfirm(InventoryClickEvent event) {
         if (slotUse > 0) {
-            playerData.createNewProfileInSlot(profileName, className, !event.isShiftClick(),slotUse,false);
+
+            playerData.createNewProfileInSlot(profileName, className, !hasPreviousMenu() || !((CharSelectionMenu) getPreviousMenu()).isShift(),slotUse,  false);
         }
         else {
-            playerData.createNewProfile(profileName,className, !event.isShiftClick());
+            playerData.createNewProfile(profileName,className, !hasPreviousMenu() || !((CharSelectionMenu) getPreviousMenu()).isShift());
         }
         if (hasPreviousMenu()){
             close(CloseReason.CONFIRM_OPEN_NEW);
@@ -138,6 +142,7 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
     @Override
     protected void onCancel(InventoryClickEvent event) {
         if (hasPreviousMenu()){
+            close(CloseReason.CANCEL_OPEN_NEW);
             getPreviousMenu().open();
             return;
         }
@@ -150,12 +155,12 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
         if (profileName != null && !profileName.isEmpty() && !profileName.equalsIgnoreCase("cancel") && !profileName.equalsIgnoreCase("close") && !RPGProfiles.getProfileConfigManager().isForbiddenName(profileName)) {
             lore.add(ChatColor.GREEN + "Name: " + profileName);
         } else {
-            lore.add(ChatColor.RED + "Name: Not Set");
+            lore.add(ChatColor.RED + "Name: [EMPTY]");
         }
         if (className != null && !className.isEmpty()) {
             lore.add(ChatColor.GREEN + "Class: " + className);
         } else {
-            lore.add(ChatColor.RED + "Class: Not Set");
+            lore.add(ChatColor.RED + "Class: [EMPTY]");
         }
 
         return lore;
@@ -164,28 +169,30 @@ public class ProfileCreateMenu extends ConfirmCancelMenu {
 
     @Override
     public void handleCloseEvent(InventoryCloseEvent event) {
-        if (input) {
-            return;
-        }
-
-        if (getCloseReason() == CloseReason.CONFIRM_OPEN_NEW){
-            getPreviousMenu().open();
-        }
-        if (getCloseReason() == CloseReason.CONFIRM){
-            return;
-        }
-        if (getCloseReason() == CloseReason.CANCEL){
-            return;
-        }
-        if (getCloseReason() == CloseReason.CANCEL_OPEN_NEW){
-            getPreviousMenu().open();
-        }
-        if (getCloseReason() == CloseReason.NONE){
-            return;
-        }
-        if (getCloseReason() == CloseReason.ERROR){
-            throw new RuntimeException("ERROR: ProfileCreateMenu");
-        }
+//        if (input) {
+//            return;
+//        }
+//
+//        if (getCloseReason() == CloseReason.CONFIRM_OPEN_NEW){
+//            getPreviousMenu().open();
+//            return;
+//        }
+//        if (getCloseReason() == CloseReason.CONFIRM){
+//            return;
+//        }
+//        if (getCloseReason() == CloseReason.CANCEL){
+//            return;
+//        }
+//        if (getCloseReason() == CloseReason.CANCEL_OPEN_NEW){
+//            getPreviousMenu().open();
+//            return;
+//        }
+//        if (getCloseReason() == CloseReason.NONE){
+//            return;
+//        }
+//        if (getCloseReason() == CloseReason.ERROR){
+//            throw new RuntimeException("ERROR: ProfileCreateMenu");
+//        }
     }
     @Override
     public @NotNull Inventory getInventory() {

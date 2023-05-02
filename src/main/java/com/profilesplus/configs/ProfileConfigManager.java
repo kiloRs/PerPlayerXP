@@ -1,9 +1,9 @@
-package com.profilesplus.listeners.text;
+package com.profilesplus.configs;
 
 
 import com.profilesplus.RPGProfiles;
-import com.profilesplus.players.DefaultData;
 import com.profilesplus.players.PlayerData;
+import lombok.Getter;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -15,29 +15,14 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Getter
 public class ProfileConfigManager {
     private final JavaPlugin plugin;
     private final FileConfiguration config;
-    private final List<DefaultData> alldata = new ArrayList<>();
-
     public ProfileConfigManager(JavaPlugin plugin) {
         this.plugin = plugin;
         this.config = plugin.getConfig();
 
-        loadAll();
-    }
-
-    public void loadAll(){
-        for (String key : RPGProfiles.getDefaultPlayerConfig().getKeys(false)) {
-            if (RPGProfiles.getDefaultPlayerConfig().isConfigurationSection(key) && !RPGProfiles.getDefaultPlayerConfig().getConfigurationSection(key).getKeys(false).isEmpty()){
-                DefaultData e = new DefaultData(key);
-                alldata.add(e);
-
-                if (!e.exists()){
-                    alldata.remove(e);
-                }
-            }
-        }
     }
 
     public int getMinNameLength() {
@@ -53,7 +38,7 @@ public class ProfileConfigManager {
     }
 
     public boolean isDuplicateName(String name) {
-        return PlayerData.getPlayerDataInstances().values().stream().anyMatch(playerData -> playerData.getProfiles().values().stream().anyMatch(profile -> profile.getId().equalsIgnoreCase(name)));
+        return PlayerData.getPlayerDataInstances().values().stream().anyMatch(playerData -> playerData.getProfileStorage().getAll().stream().anyMatch(profile -> profile.getId().equalsIgnoreCase(name)));
     }
 
     public boolean canUse(Player player, String string){

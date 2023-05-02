@@ -1,7 +1,9 @@
 package com.profilesplus.listeners;
 
+import com.profilesplus.RPGProfiles;
 import com.profilesplus.menu.ConfirmCancelMenu;
 import com.profilesplus.menu.InventoryGUI;
+import com.profilesplus.players.PlayerData;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -23,12 +25,26 @@ public class InventoryListener implements Listener {
             }
             return;
         }
+        PlayerData playerData = PlayerData.get(event.getWhoClicked().getUniqueId());
+
         InventoryHolder holder = event.getInventory().getHolder();
         if (event.getClickedInventory().getHolder() instanceof InventoryGUI inventoryGUI){
+            if (!playerData.canChangeProfiles()){
+                event.setCancelled(true);
+                inventoryGUI.close();
+                String message = RPGProfiles.getMessage(playerData.getPlayer(), "prohibited.notify", "&aYou are prohibited from using this menu while &b(In Combat/Sleeping/Flying/Casting)");
+                playerData.getPlayer().sendMessage(message);
+            }
             inventoryGUI.processClickEvent(event);
             return;
         }
         else if (holder instanceof InventoryGUI inventoryGUI){
+            if (!playerData.canChangeProfiles()){
+                event.setCancelled(true);
+                inventoryGUI.close();
+                String message = RPGProfiles.getMessage(playerData.getPlayer(), "prohibited.notify", "&aYou are prohibited from using this menu while &b(In Combat/Sleeping/Flying/Casting)");
+                playerData.getPlayer().sendMessage(message);
+            }
             inventoryGUI.processClickEvent(event);
         }
     }
@@ -40,6 +56,7 @@ public class InventoryListener implements Listener {
         }
         InventoryHolder holder = event.getInventory().getHolder();
             if (holder instanceof InventoryGUI inventoryGUI) {
+
                 if (!inventoryGUI.getPlayer().getUniqueId().equals(player.getUniqueId())){
                     return;
                 }
@@ -64,7 +81,13 @@ public class InventoryListener implements Listener {
     @EventHandler
     public void on(InventoryOpenEvent event){
         if (event.getInventory().getHolder() instanceof InventoryGUI inventoryGUI){
-            return;
+            PlayerData playerData = PlayerData.get(event.getPlayer().getUniqueId());
+            if (playerData.canChangeProfiles()) {
+                return;
+            }
+            String message = RPGProfiles.getMessage(playerData.getPlayer(), "prohibited.notify", "&aYou are prohibited from using this menu while &b(In Combat/Sleeping/Flying/Casting)");
+            playerData.getPlayer().sendMessage(message);
+            event.setCancelled(true);
         }
     }
 }

@@ -18,16 +18,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ProfileRemoveMenu extends ConfirmCancelMenu {
-    private final PlayerData playerData;
     private Profile profile;
 
 
     public ProfileRemoveMenu(PlayerData playerData, Profile profile, @Nullable CharSelectionMenu selectionMenu){
         this(playerData,profile,selectionMenu,null);
     }
-    public ProfileRemoveMenu(PlayerData playerData, Profile profile, @Nullable CharSelectionMenu menu, HumanEntity view) {
+    public ProfileRemoveMenu(PlayerData playerData, Profile profile, @Nullable CharSelectionMenu menu,@Nullable HumanEntity view) {
         super(playerData.getPlayer(), "Remove Profile", 18,"REMOVE",view);
-        this.playerData = playerData;
         this.profile = profile;
 
         if (profile == null){
@@ -39,14 +37,14 @@ public class ProfileRemoveMenu extends ConfirmCancelMenu {
         }
 
         // Display profile in the center of the top row
-        setItem(4, profile.getIcon().getItemStack(), event -> {
+        setItem(4, profile.getIcon(), event -> {
 
         });
     }
 
     @Override
     protected boolean canConfirm() {
-        return playerData.getProfiles().containsValue(profile) && !playerData.isActive(profile.getIndex());
+        return playerData.getProfileStorage().hasProfile(profile) && !playerData.getProfileStorage().isActiveProfile(profile.getIndex());
     }
 
     @Override
